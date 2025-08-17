@@ -55,6 +55,8 @@ contextBridge.exposeInMainWorld('api', {
     exportPayments: (options) => ipcRenderer.invoke('report:export-payments', options),
     exportMembers: (options) => ipcRenderer.invoke('report:export-members', options),
     generateReceipt: (options) => ipcRenderer.invoke('report:generate-receipt', options)
+  ,
+  downloadReceipt: (options) => ipcRenderer.invoke('report:download-receipt', options)
   },
 
   // Notifications

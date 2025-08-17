@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BiometricHelper")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ca1019057c38730d3a059120ab61e6bfd1535021")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c8bb6bac08e286aba8ff81a6fecf022436cb479a")]
 [assembly: System.Reflection.AssemblyProductAttribute("BiometricHelper")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BiometricHelper")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
