@@ -119,6 +119,18 @@ const Payments = () => {
           planId: ''
         });
         loadPayments();
+        // If backend generated a receipt, open it for the user
+        try {
+          if (result.data && result.data.receipt) {
+            // Attempt to open the PDF with the default system application
+            await window.api.file.openPath(result.data.receipt);
+          } else if (result.data && result.data.receiptError) {
+            showNotification('Receipt generation failed: ' + result.data.receiptError, 'warning');
+          }
+        } catch (openErr) {
+          console.error('Failed to open receipt:', openErr);
+          showNotification('Payment saved but failed to open receipt', 'warning');
+        }
       } else {
         showNotification('Failed to add payment: ' + result.message, 'error');
       }
@@ -412,6 +424,7 @@ const Payments = () => {
                     <th>Plan</th>
                     <th>Date</th>
                     <th>Note</th>
+                    <th>Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -454,6 +467,70 @@ const Payments = () => {
                         <div className="payment-note" title={payment.note}>
                           {payment.note || '-'}
                         </div>
+                      </td>
+                      <td style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          className="button button-sm"
+                          onClick={async () => {
+                            try {
+                              const resp = await window.api.report.generateReceipt({ paymentId: payment.id });
+                              if (resp.success && resp.path) {
+                                await window.api.file.openPath(resp.path);
+                              } else if (resp.success && resp.path === undefined) {
+                                showNotification('Receipt generated but path not returned', 'warning');
+                              } else {
+                                showNotification('Failed to generate receipt: ' + (resp.error || resp.message), 'error');
+                              }
+                            } catch (err) {
+                              console.error('Receipt generation error:', err);
+                              showNotification('Failed to generate/open receipt', 'error');
+                            }
+                          }}
+                        >
+                          Reprint
+                        </button>
+
+                        <button
+                          className="button button-sm button-outline"
+                          onClick={async () => {
+                            try {
+                              console.log('Download button clicked for paymentId:', payment.id);
+                              if (!window.api || !window.api.report || !window.api.report.downloadReceipt) {
+                                console.warn('Download API not available in preload - falling back to generateReceipt + show folder');
+                                // Fallback: generate receipt to exports/receipts and open the folder
+                                try {
+                                  const gen = await window.api.report.generateReceipt({ paymentId: payment.id });
+                                  if (gen.success && gen.path) {
+                                    await window.api.file.showInFolder(gen.path);
+                                    showNotification('Receipt generated at: ' + gen.path, 'success');
+                                  } else {
+                                    showNotification('Failed to generate receipt: ' + (gen.error || gen.message), 'error');
+                                  }
+                                } catch (fallbackErr) {
+                                  console.error('Fallback receipt error:', fallbackErr);
+                                  showNotification('Download not available and fallback failed', 'error');
+                                }
+                                return;
+                              }
+
+                              const resp = await window.api.report.downloadReceipt({ paymentId: payment.id });
+                              console.log('Download receipt response:', resp);
+                              if (resp.success && resp.path) {
+                                showNotification('Receipt saved to: ' + resp.path, 'success');
+                              } else if (resp.message === 'Save canceled by user') {
+                                // user canceled the save dialog
+                                console.log('User canceled save dialog');
+                              } else {
+                                showNotification('Failed to download receipt: ' + (resp.error || resp.message), 'error');
+                              }
+                            } catch (err) {
+                              console.error('Download receipt error:', err);
+                              showNotification('Failed to download receipt: ' + (err.message || err), 'error');
+                            }
+                          }}
+                        >
+                          Download
+                        </button>
                       </td>
                     </tr>
                   ))}

@@ -1,6 +1,12 @@
 const { db, query, get, run, transaction } = require('./db');
 const bcrypt = require('bcryptjs');
 const { format, addDays, parseISO } = require('date-fns');
+const fs = require('fs');
+const path = require('path');
+const ReportsService = require('./reports');
+
+// Create a reports service instance to generate receipts/reports
+const reports = new ReportsService();
 
 // Helper function to check if current time is within operating hours
 const isTimeWithinOperatingHours = (currentTime, operatingHours) => {
@@ -558,7 +564,41 @@ module.exports = (ipcMain) => {
         payment.receiptNumber || `RCP-${Date.now()}`
       ]);
 
-      return { success: true, data: { id: info.lastInsertRowid } };
+      const paymentId = info.lastInsertRowid;
+
+      // Attempt to generate a PDF receipt for this payment.
+      try {
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+        const fileName = `receipt-${paymentId}-${timestamp}.pdf`;
+        const outputPath = path.join(__dirname, '..', 'exports', 'receipts', fileName);
+
+        // Ensure receipts directory exists
+        const receiptsDir = path.dirname(outputPath);
+        if (!fs.existsSync(receiptsDir)) {
+          fs.mkdirSync(receiptsDir, { recursive: true });
+        }
+
+        const receiptResult = await reports.generatePaymentReceiptPdf(paymentId, outputPath);
+
+        return {
+          success: true,
+          data: {
+            id: paymentId,
+            receipt: receiptResult.success ? receiptResult.path : null,
+            receiptError: receiptResult.success ? null : receiptResult.error
+          }
+        };
+      } catch (receiptError) {
+        // Payment was successfully recorded but receipt generation failed
+        return {
+          success: true,
+          data: {
+            id: paymentId,
+            receipt: null,
+            receiptError: receiptError.message || String(receiptError)
+          }
+        };
+      }
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -923,6 +963,70 @@ module.exports = (ipcMain) => {
     } catch (error) {
       console.error('Error fetching payments report:', error);
       return { success: false, message: error.message };
+    }
+  });
+
+  // Generate receipt on demand
+  ipcMain.handle('report:generate-receipt', async (event, { paymentId }) => {
+    try {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const fileName = `receipt-${paymentId}-${timestamp}.pdf`;
+      const outputPath = path.join(__dirname, '..', 'exports', 'receipts', fileName);
+
+      // Ensure receipts directory exists
+      const receiptsDir = path.dirname(outputPath);
+      if (!fs.existsSync(receiptsDir)) {
+        fs.mkdirSync(receiptsDir, { recursive: true });
+      }
+
+      const result = await reports.generatePaymentReceiptPdf(paymentId, outputPath);
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Download (save as) receipt - opens a save dialog and writes PDF to chosen path
+  const { dialog } = require('electron');
+  ipcMain.handle('report:download-receipt', async (event, { paymentId }) => {
+    try {
+      console.log('report:download-receipt invoked for paymentId:', paymentId);
+      const defaultFileName = `receipt-${paymentId}.pdf`;
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title: 'Save Receipt',
+        defaultPath: defaultFileName,
+        filters: [
+          { name: 'PDF', extensions: ['pdf'] }
+        ]
+      });
+
+      console.log('Save dialog result - canceled:', canceled, 'filePath:', filePath);
+      if (canceled || !filePath) {
+        console.log('User canceled save dialog');
+        return { success: false, message: 'Save canceled by user' };
+      }
+
+      // Ensure directory exists
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+      console.log('Generating receipt at:', filePath);
+      const result = await reports.generatePaymentReceiptPdf(paymentId, filePath);
+      console.log('Receipt generation result:', result && (result.success ? 'success' : result.error || 'failed'));
+      if (result.success) {
+        try {
+          const { shell } = require('electron');
+          // Show the file in the system file manager
+          shell.showItemInFolder(filePath);
+        } catch (e) {
+          console.error('Failed to show file in folder:', e);
+        }
+        return { success: true, path: filePath };
+      }
+      return { success: false, error: result.error || 'Failed to generate receipt' };
+    } catch (error) {
+      console.error('report:download-receipt error:', error);
+      return { success: false, error: error.message };
     }
   });
 
