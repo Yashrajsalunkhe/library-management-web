@@ -29,6 +29,11 @@ out/
 *.db-wal
 electron/library.db-shm
 electron/library.db-wal
+# Ignore local sqlite database files
+library.db
+electron/library.db
+*.db
+*.sqlite
 
 # Backup files
 *.backup
