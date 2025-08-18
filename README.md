@@ -27,7 +27,87 @@ A comprehensive Electron-based desktop application for managing library membersh
 - **Cross-platform**: Supports Windows, macOS, and Linux
 - **Real-time Updates**: Live dashboard statistics and notifications
 
+### Project Structure
+
+```
+library-management/
+├── 📁 src/                    # React frontend source
+│   ├── 📁 components/         # Reusable components
+│   ├── 📁 contexts/          # React contexts
+│   ├── 📁 pages/             # Application pages
+│   └── 📁 styles/            # Styling files
+├── 📁 electron/              # Electron backend
+│   ├── 📄 main.js           # Main process
+│   ├── 📄 db.js             # Database operations
+│   ├── 📄 ipcHandlers.js    # IPC handlers
+│   └── 📄 library.db        # SQLite database
+├── 📁 biometric-helper/      # C# biometric integration
+├── 📁 scripts/              # Build & utility scripts
+├── 📁 config/               # Configuration files
+├── 📁 docs/                 # Documentation
+├── 📁 backups/              # Database backups
+└── 📁 exports/              # Generated reports
+```
+
+## 📚 Documentation
+
+- [Development Guide](docs/DEVELOPMENT.md) - Setup and development workflow
+- [API Documentation](docs/API.md) - IPC channels and database schema
+- [User Manual](docs/USER_MANUAL.md) - How to use the application
+
 ## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
+- .NET 6.0 (for biometric integration)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Yashrajsalunkhe/library-management.git
+   cd library-management
+   ```
+
+2. **Run setup script**
+   ```bash
+   ./scripts/setup.sh
+   ```
+
+3. **Configure environment**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+4. **Start development**
+   ```bash
+   npm run start
+   ```
+
+### Development Scripts
+
+```bash
+# Development
+npm run start        # Start both Vite and Electron
+npm run dev          # Start only Vite dev server
+npm run electron     # Start only Electron
+
+# Production
+npm run build        # Build React frontend
+npm run electron:build  # Package Electron app
+./scripts/build.sh   # Complete build process
+
+# Database
+./scripts/db.sh backup    # Backup database
+./scripts/db.sh restore   # Restore database
+./scripts/db.sh status    # Database status
+
+# Utilities
+npm run clean        # Clean build artifacts
+npm run rebuild      # Rebuild native dependencies
+```
 
 ### Prerequisites
 - Node.js 16+ 

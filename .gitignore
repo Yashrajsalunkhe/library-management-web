@@ -1,5 +1,64 @@
-node_modules
+# Dependencies
+node_modules/
+.npm
+.pnpm-debug.log*
+.yarn-integrity
 
-# SQLite temporary files
+# Runtime logs
+*.log
+*.pid
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+dist/
+dist-electron/
+build/
+out/
+
+# SQLite database files and temporary files
+*.db-shm
+*.db-wal
 electron/library.db-shm
 electron/library.db-wal
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Test files (if any)
+test-*.js
+temp-*.js
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Electron build artifacts
+*.orig
+.electron-builder.env
+
+# Reports and exports (optional - uncomment if you don't want to track exports)
+# exports/
+# reports/

@@ -5,13 +5,17 @@
   "type": "commonjs",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --config config/vite.config.js",
     "electron": "NODE_ENV=development electron .",
-    "build": "vite build",
+    "build": "vite build --config config/vite.config.js",
     "electron:build": "npm run build && electron-builder",
     "dist": "npm run build && electron-builder --publish=never",
     "rebuild": "electron-rebuild",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "start": "chmod +x scripts/start.sh && ./scripts/start.sh",
+    "clean": "rm -rf dist dist-electron node_modules/.cache",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "echo 'Tests not configured yet'"
   },
   "keywords": [
     "library",
