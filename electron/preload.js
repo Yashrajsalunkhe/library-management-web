@@ -36,6 +36,14 @@ contextBridge.exposeInMainWorld('api', {
     list: (filters) => ipcRenderer.invoke('payment:list', filters)
   },
 
+  // Expenditures
+  expenditure: {
+    add: (expenditure) => ipcRenderer.invoke('expenditure:add', expenditure),
+    list: (filters) => ipcRenderer.invoke('expenditure:list', filters),
+    delete: (id) => ipcRenderer.invoke('expenditure:delete', id),
+    getTotalAmount: (filters) => ipcRenderer.invoke('expenditure:getTotalAmount', filters)
+  },
+
   // Attendance
   attendance: {
     checkin: (data) => ipcRenderer.invoke('attendance:checkin', data),

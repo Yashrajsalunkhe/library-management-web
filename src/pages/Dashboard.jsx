@@ -111,6 +111,30 @@ const Dashboard = () => {
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
+              <p className="text-sm text-gray-600">Today's Expenditure</p>
+              <p className="text-xl font-semibold text-red-600">
+                ₹{stats?.todayExpenditure?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+            <span style={{ fontSize: '2rem', opacity: 0.6 }}>💸</span>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Net Income Today</p>
+              <p className={`text-xl font-semibold ${(stats?.todayNetIncome || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ₹{stats?.todayNetIncome?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+            <span style={{ fontSize: '2rem', opacity: 0.6 }}>📊</span>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
               <p className="text-sm text-gray-600">Expiring Soon</p>
               <p className="text-xl font-semibold text-yellow-600">
                 {stats?.expiringMembers || 0}
@@ -211,8 +235,18 @@ const Dashboard = () => {
               }}>
                 Monthly Summary
               </h4>
-              <p style={{ fontSize: '0.75rem', color: '#718096' }}>
+              <p style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>
                 Total Revenue: ₹{stats?.monthlyIncome?.toFixed(2) || '0.00'}
+              </p>
+              <p style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>
+                Total Expenditure: ₹{stats?.monthlyExpenditure?.toFixed(2) || '0.00'}
+              </p>
+              <p style={{ 
+                fontSize: '0.75rem', 
+                fontWeight: '600',
+                color: (stats?.monthlyNetIncome || 0) >= 0 ? '#38a169' : '#e53e3e'
+              }}>
+                Net Income: ₹{stats?.monthlyNetIncome?.toFixed(2) || '0.00'}
               </p>
             </div>
 

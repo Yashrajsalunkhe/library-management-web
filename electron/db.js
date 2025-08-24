@@ -147,6 +147,22 @@ const createTables = () => {
     )
   `).run();
 
+  // Expenditures table
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS expenditures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      amount REAL NOT NULL,
+      category TEXT NOT NULL,
+      description TEXT,
+      payment_mode TEXT DEFAULT 'cash' CHECK(payment_mode IN ('cash', 'card', 'upi', 'bank_transfer')),
+      bill_date TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_by INTEGER,
+      FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `).run();
+
   // Migrate existing members table to add new columns
   try {
     // Check if new columns exist, if not add them

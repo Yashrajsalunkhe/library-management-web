@@ -854,11 +854,23 @@ module.exports = (ipcMain) => {
       const today = format(new Date(), 'yyyy-MM-dd');
       const thisMonth = format(new Date(), 'yyyy-MM');
       
+      // Get payment statistics
+      const todayIncome = get('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = ?', [today])?.total || 0;
+      const monthlyIncome = get('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime(\'%Y-%m\', paid_at) = ?', [thisMonth])?.total || 0;
+      
+      // Get expenditure statistics
+      const todayExpenditure = get('SELECT COALESCE(SUM(amount), 0) as total FROM expenditures WHERE DATE(bill_date) = ?', [today])?.total || 0;
+      const monthlyExpenditure = get('SELECT COALESCE(SUM(amount), 0) as total FROM expenditures WHERE strftime(\'%Y-%m\', bill_date) = ?', [thisMonth])?.total || 0;
+      
       const stats = {
         totalMembers: get('SELECT COUNT(*) as count FROM members WHERE status = ?', ['active'])?.count || 0,
         todayAttendance: get('SELECT COUNT(*) as count FROM attendance WHERE DATE(check_in) = ?', [today])?.count || 0,
-        todayIncome: get('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE DATE(paid_at) = ?', [today])?.total || 0,
-        monthlyIncome: get('SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE strftime(\'%Y-%m\', paid_at) = ?', [thisMonth])?.total || 0,
+        todayIncome: todayIncome,
+        todayExpenditure: todayExpenditure,
+        todayNetIncome: todayIncome - todayExpenditure,
+        monthlyIncome: monthlyIncome,
+        monthlyExpenditure: monthlyExpenditure,
+        monthlyNetIncome: monthlyIncome - monthlyExpenditure,
         expiringMembers: get(`
           SELECT COUNT(*) as count FROM members 
           WHERE status = ? AND DATE(end_date) <= DATE('now', '+10 days')
@@ -1501,6 +1513,116 @@ module.exports = (ipcMain) => {
       return { success: false, message: 'Export cancelled' };
     } catch (error) {
       console.error('Export data error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // EXPENDITURES
+  // ===================
+  
+  ipcMain.handle('expenditure:add', async (event, expenditure) => {
+    try {
+      const { title, amount, category, description, paymentMode, billDate } = expenditure;
+      
+      const stmt = db.prepare(`
+        INSERT INTO expenditures (title, amount, category, description, payment_mode, bill_date, created_by) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      const result = stmt.run(title, amount, category, description || null, paymentMode, billDate, 1); // Using default user ID 1
+      
+      return { 
+        success: true, 
+        message: 'Expenditure added successfully',
+        data: { id: result.lastInsertRowid }
+      };
+    } catch (error) {
+      console.error('Add expenditure error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('expenditure:list', async (event, filters = {}) => {
+    try {
+      let query = 'SELECT * FROM expenditures WHERE 1=1';
+      const params = [];
+
+      // Apply filters
+      if (filters.category) {
+        query += ' AND category = ?';
+        params.push(filters.category);
+      }
+      
+      if (filters.dateFrom) {
+        query += ' AND bill_date >= ?';
+        params.push(filters.dateFrom);
+      }
+      
+      if (filters.dateTo) {
+        query += ' AND bill_date <= ?';
+        params.push(filters.dateTo);
+      }
+      
+      if (filters.paymentMode) {
+        query += ' AND payment_mode = ?';
+        params.push(filters.paymentMode);
+      }
+      
+      if (filters.search) {
+        query += ' AND (title LIKE ? OR description LIKE ?)';
+        params.push(`%${filters.search}%`, `%${filters.search}%`);
+      }
+
+      query += ' ORDER BY bill_date DESC, created_at DESC';
+
+      const stmt = db.prepare(query);
+      const expenditures = stmt.all(...params);
+      
+      return { success: true, data: expenditures };
+    } catch (error) {
+      console.error('List expenditures error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('expenditure:delete', async (event, id) => {
+    try {
+      const stmt = db.prepare('DELETE FROM expenditures WHERE id = ?');
+      const result = stmt.run(id);
+      
+      if (result.changes === 0) {
+        return { success: false, message: 'Expenditure not found' };
+      }
+      
+      return { success: true, message: 'Expenditure deleted successfully' };
+    } catch (error) {
+      console.error('Delete expenditure error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('expenditure:getTotalAmount', async (event, filters = {}) => {
+    try {
+      let query = 'SELECT SUM(amount) as total FROM expenditures WHERE 1=1';
+      const params = [];
+
+      if (filters.dateFrom) {
+        query += ' AND bill_date >= ?';
+        params.push(filters.dateFrom);
+      }
+      
+      if (filters.dateTo) {
+        query += ' AND bill_date <= ?';
+        params.push(filters.dateTo);
+      }
+
+      const stmt = db.prepare(query);
+      const result = stmt.get(...params);
+      
+      return { success: true, data: { total: result.total || 0 } };
+    } catch (error) {
+      console.error('Get total expenditure error:', error);
       return { success: false, message: error.message };
     }
   });

@@ -7,6 +7,7 @@ import NotificationContainer from './components/NotificationContainer';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
 import Payments from './pages/Payments';
+import Expenditures from './pages/Expenditures';
 import Attendance from './pages/Attendance.jsx';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
@@ -76,6 +77,8 @@ const AppContent = () => {
         return <Members initialAction={pageProps} />;
       case 'payments':
         return <Payments />;
+      case 'expenditures':
+        return <Expenditures />;
       case 'attendance':
         return <Attendance />;
       case 'reports':

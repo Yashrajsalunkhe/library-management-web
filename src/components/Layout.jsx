@@ -10,6 +10,7 @@ const Layout = ({ children, currentPage, onPageChange }) => {
     { id: 'members', label: 'Members', icon: '👥' },
     { id: 'attendance', label: 'Attendance', icon: '📅' },
     { id: 'payments', label: 'Payments', icon: '💰' },
+    { id: 'expenditures', label: 'Expenditures', icon: '💸' },
     { id: 'reports', label: 'Reports', icon: '📈' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ];
