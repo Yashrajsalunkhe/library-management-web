@@ -293,13 +293,17 @@ class ReportsService {
   // Generate payment receipt (PDF)
   async generatePaymentReceiptPdf(paymentId, outputPath) {
     try {
-      // Get payment details
+      // Get payment details with all member information
       const payment = query(`
         SELECT 
           p.*,
           m.name as member_name,
           m.email as member_email,
           m.phone as member_phone,
+          m.city as member_city,
+          m.address as member_address,
+          m.seat_no as member_seat_no,
+          m.birth_date as member_birth_date,
           mp.name as plan_name,
           mp.duration_days
         FROM payments p
@@ -312,180 +316,374 @@ class ReportsService {
         return { success: false, error: 'Payment not found' };
       }
 
-      // Get library settings
+      // Get library settings - fresh from database each time
       const settings = query('SELECT key, value FROM settings');
       const settingsObj = {};
       settings.forEach(s => settingsObj[s.key] = s.value);
+      
+      // Debug log to verify settings are being loaded
+      console.log('Current library settings:', {
+        'general.libraryName': settingsObj['general.libraryName'],
+        'general.address': settingsObj['general.address'],
+        'general.phone': settingsObj['general.phone']
+      });
 
       const printer = new PdfPrinter(this.fonts);
       const fontFamily = Object.keys(this.fonts)[0];
 
       const docDefinition = {
+        pageSize: 'A4',
+        pageMargins: [40, 40, 40, 40],
         content: [
-          // Header
-          {
-            columns: [
-              {
-                text: settingsObj.library_name || 'Library Management System',
-                style: 'header'
-              },
-              {
-                text: [
-                  { text: 'RECEIPT\n', style: 'receiptTitle' },
-                  { text: `#${payment.receipt_number}`, style: 'receiptNumber' }
-                ],
-                alignment: 'right'
-              }
-            ]
-          },
-          
-          { text: settingsObj.library_address || '', style: 'subheader' },
-          { text: `Phone: ${settingsObj.library_phone || 'N/A'}`, style: 'subheader' },
-          
-          { text: '\n' },
-          
-          // Payment details
-          {
-            columns: [
-              {
-                width: '60%',
-                text: [
-                  { text: 'Bill To:\n', style: 'label' },
-                  { text: `${payment.member_name}\n`, style: 'value' },
-                  { text: `Email: ${payment.member_email || 'N/A'}\n`, style: 'small' },
-                  { text: `Phone: ${payment.member_phone || 'N/A'}`, style: 'small' }
-                ]
-              },
-              {
-                width: '40%',
-                text: [
-                  { text: 'Payment Date:\n', style: 'label' },
-                  { text: `${new Date(payment.paid_at).toLocaleDateString()}\n\n`, style: 'value' },
-                  { text: 'Payment Mode:\n', style: 'label' },
-                  { text: payment.mode.toUpperCase(), style: 'value' }
-                ]
-              }
-            ]
-          },
-          
-          { text: '\n' },
-          
-          // Payment table
           {
             table: {
-              headerRows: 1,
-              widths: ['*', 'auto', 'auto'],
+              widths: ['*'],
               body: [
                 [
-                  { text: 'Description', style: 'tableHeader' },
-                  { text: 'Duration', style: 'tableHeader' },
-                  { text: 'Amount', style: 'tableHeader' }
-                ],
-                [
-                  payment.plan_name || 'Payment',
-                  payment.duration_days ? `${payment.duration_days} days` : 'N/A',
-                  `₹${payment.amount.toFixed(2)}`
+                  {
+                    stack: [
+                      // Header Section
+                      { text: 'CASH MEMO', style: 'title', alignment: 'center', margin: [0, 15, 0, 5] },
+                      { text: settingsObj['general.libraryName'] || 'Library Management System', style: 'subtitle', alignment: 'center', margin: [0, 0, 0, 10] },
+                      
+                      // Contact Info Section
+                      { 
+                        text: [
+                          { text: settingsObj['general.phone'] ? `Mob. ${settingsObj['general.phone']}` : '', style: 'contact' },
+                          { text: settingsObj['general.address'] ? '\n' + settingsObj['general.address'] : '', style: 'contact' },
+                          { text: settingsObj['general.email'] ? '\nEmail: ' + settingsObj['general.email'] : '', style: 'contact' }
+                        ].filter(item => item.text), // Remove empty text items
+                        alignment: 'center',
+                        margin: [0, 0, 0, 20]
+                      },
+                      
+                      // Member Details Section with proper spacing
+                      {
+                        table: {
+                          widths: [80, '*'],
+                          body: [
+                            [
+                              { text: 'To:', style: 'fieldLabel', border: [false, false, false, false] },
+                              { text: payment.member_name || 'Member Name', style: 'fieldValue', border: [false, false, false, true] }
+                            ]
+                          ]
+                        },
+                        layout: {
+                          hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                          vLineWidth: function (i, node) { return 0; },
+                          hLineColor: function (i, node) { return '#ccc'; },
+                          paddingLeft: function(i, node) { return 0; },
+                          paddingRight: function(i, node) { return 0; },
+                          paddingTop: function(i, node) { return 3; },
+                          paddingBottom: function(i, node) { return 8; }
+                        },
+                        margin: [0, 0, 0, 8]
+                      },
+                      
+                      {
+                        table: {
+                          widths: [80, '*'],
+                          body: [
+                            [
+                              { text: 'Email:', style: 'fieldLabel', border: [false, false, false, false] },
+                              { text: payment.member_email || 'Email Address', style: 'fieldValue', border: [false, false, false, true] }
+                            ]
+                          ]
+                        },
+                        layout: {
+                          hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                          vLineWidth: function (i, node) { return 0; },
+                          hLineColor: function (i, node) { return '#ccc'; },
+                          paddingLeft: function(i, node) { return 0; },
+                          paddingRight: function(i, node) { return 0; },
+                          paddingTop: function(i, node) { return 3; },
+                          paddingBottom: function(i, node) { return 8; }
+                        },
+                        margin: [0, 0, 0, 8]
+                      },
+
+                      {
+                        columns: [
+                          {
+                            width: '*',
+                            table: {
+                              widths: [80, '*'],
+                              body: [
+                                [
+                                  { text: 'Mobile:', style: 'fieldLabel', border: [false, false, false, false] },
+                                  { text: payment.member_phone || 'Mobile Number', style: 'fieldValue', border: [false, false, false, true] }
+                                ]
+                              ]
+                            },
+                            layout: {
+                              hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                              vLineWidth: function (i, node) { return 0; },
+                              hLineColor: function (i, node) { return '#ccc'; },
+                              paddingLeft: function(i, node) { return 0; },
+                              paddingRight: function(i, node) { return 0; },
+                              paddingTop: function(i, node) { return 3; },
+                              paddingBottom: function(i, node) { return 8; }
+                            }
+                          },
+                          { width: 20, text: '' },
+                          {
+                            width: '*',
+                            table: {
+                              widths: [60, '*'],
+                              body: [
+                                [
+                                  { text: 'City:', style: 'fieldLabel', border: [false, false, false, false] },
+                                  { text: payment.member_city || 'City', style: 'fieldValue', border: [false, false, false, true] }
+                                ]
+                              ]
+                            },
+                            layout: {
+                              hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                              vLineWidth: function (i, node) { return 0; },
+                              hLineColor: function (i, node) { return '#ccc'; },
+                              paddingLeft: function(i, node) { return 0; },
+                              paddingRight: function(i, node) { return 0; },
+                              paddingTop: function(i, node) { return 3; },
+                              paddingBottom: function(i, node) { return 8; }
+                            }
+                          }
+                        ],
+                        margin: [0, 0, 0, 8]
+                      },
+
+                      {
+                        table: {
+                          widths: [80, '*'],
+                          body: [
+                            [
+                              { text: 'Address:', style: 'fieldLabel', border: [false, false, false, false] },
+                              { text: payment.member_address || 'Address', style: 'fieldValue', border: [false, false, false, true] }
+                            ]
+                          ]
+                        },
+                        layout: {
+                          hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                          vLineWidth: function (i, node) { return 0; },
+                          hLineColor: function (i, node) { return '#ccc'; },
+                          paddingLeft: function(i, node) { return 0; },
+                          paddingRight: function(i, node) { return 0; },
+                          paddingTop: function(i, node) { return 3; },
+                          paddingBottom: function(i, node) { return 8; }
+                        },
+                        margin: [0, 0, 0, 15]
+                      },
+
+                      {
+                        columns: [
+                          {
+                            width: '*',
+                            table: {
+                              widths: [80, '*'],
+                              body: [
+                                [
+                                  { text: 'Date:', style: 'fieldLabel', border: [false, false, false, false] },
+                                  { text: payment.paid_at ? new Date(payment.paid_at).toLocaleDateString('en-GB') : 'dd - mm - yyyy', style: 'fieldValue', border: [false, false, false, true] }
+                                ]
+                              ]
+                            },
+                            layout: {
+                              hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                              vLineWidth: function (i, node) { return 0; },
+                              hLineColor: function (i, node) { return '#ccc'; },
+                              paddingLeft: function(i, node) { return 0; },
+                              paddingRight: function(i, node) { return 0; },
+                              paddingTop: function(i, node) { return 3; },
+                              paddingBottom: function(i, node) { return 8; }
+                            }
+                          },
+                          { width: 20, text: '' },
+                          {
+                            width: '*',
+                            table: {
+                              widths: [60, '*'],
+                              body: [
+                                [
+                                  { text: 'Month:', style: 'fieldLabel', border: [false, false, false, false] },
+                                  { text: payment.plan_name || 'Month', style: 'fieldValue', border: [false, false, false, true] }
+                                ]
+                              ]
+                            },
+                            layout: {
+                              hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                              vLineWidth: function (i, node) { return 0; },
+                              hLineColor: function (i, node) { return '#ccc'; },
+                              paddingLeft: function(i, node) { return 0; },
+                              paddingRight: function(i, node) { return 0; },
+                              paddingTop: function(i, node) { return 3; },
+                              paddingBottom: function(i, node) { return 8; }
+                            }
+                          }
+                        ],
+                        margin: [0, 0, 0, 15]
+                      },
+
+                      // Payment Details Section
+                      {
+                        columns: [
+                          {
+                            width: '*',
+                            table: {
+                              widths: [100, 80],
+                              body: [
+                                [
+                                  { text: 'Membership Fee:', style: 'fieldLabel', border: [false, false, false, false] },
+                                  { text: `₹ ${payment.amount.toFixed(2)}`, style: 'fieldValue', border: [false, false, false, true] }
+                                ]
+                              ]
+                            },
+                            layout: {
+                              hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                              vLineWidth: function (i, node) { return 0; },
+                              hLineColor: function (i, node) { return '#ccc'; },
+                              paddingLeft: function(i, node) { return 0; },
+                              paddingRight: function(i, node) { return 0; },
+                              paddingTop: function(i, node) { return 3; },
+                              paddingBottom: function(i, node) { return 8; }
+                            }
+                          },
+                          { width: 20, text: '' },
+                          {
+                            width: '*',
+                            table: {
+                              widths: [60, 80],
+                              body: [
+                                [
+                                  { text: 'Seat No.:', style: 'fieldLabel', border: [false, false, false, false] },
+                                  { text: payment.member_seat_no || 'Seat Number', style: 'fieldValue', border: [false, false, false, true] }
+                                ]
+                              ]
+                            },
+                            layout: {
+                              hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                              vLineWidth: function (i, node) { return 0; },
+                              hLineColor: function (i, node) { return '#ccc'; },
+                              paddingLeft: function(i, node) { return 0; },
+                              paddingRight: function(i, node) { return 0; },
+                              paddingTop: function(i, node) { return 3; },
+                              paddingBottom: function(i, node) { return 8; }
+                            }
+                          }
+                        ],
+                        margin: [0, 0, 0, 15]
+                      },
+
+                      {
+                        columns: [
+                          {
+                            width: '*',
+                            table: {
+                              widths: [60, '*'],
+                              body: [
+                                [
+                                  { text: 'Other:', style: 'fieldLabel', border: [false, false, false, false] },
+                                  { text: payment.note || 'Other Charges', style: 'fieldValue', border: [false, false, false, true] }
+                                ]
+                              ]
+                            },
+                            layout: {
+                              hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                              vLineWidth: function (i, node) { return 0; },
+                              hLineColor: function (i, node) { return '#ccc'; },
+                              paddingLeft: function(i, node) { return 0; },
+                              paddingRight: function(i, node) { return 0; },
+                              paddingTop: function(i, node) { return 3; },
+                              paddingBottom: function(i, node) { return 8; }
+                            }
+                          },
+                          { width: 20, text: '' },
+                          {
+                            width: '*',
+                            table: {
+                              widths: [90, '*'],
+                              body: [
+                                [
+                                  { text: 'Payment Mode:', style: 'fieldLabel', border: [false, false, false, false] },
+                                  { text: payment.mode ? payment.mode.toUpperCase() : 'Cash / UPI / Card', style: 'fieldValue', border: [false, false, false, true] }
+                                ]
+                              ]
+                            },
+                            layout: {
+                              hLineWidth: function (i, node) { return (i === 1) ? 0.5 : 0; },
+                              vLineWidth: function (i, node) { return 0; },
+                              hLineColor: function (i, node) { return '#ccc'; },
+                              paddingLeft: function(i, node) { return 0; },
+                              paddingRight: function(i, node) { return 0; },
+                              paddingTop: function(i, node) { return 3; },
+                              paddingBottom: function(i, node) { return 8; }
+                            }
+                          }
+                        ],
+                        margin: [0, 0, 0, 25]
+                      },
+
+                      // Amount in words
+                      {
+                        columns: [
+                          { width: 100, text: 'Amount in Words:', style: 'fieldLabel' },
+                          { text: '______________________________', style: 'underline' }
+                        ],
+                        margin: [0, 0, 0, 30]
+                      },
+
+                      // Signature
+                      {
+                        columns: [
+                          { width: '*', text: '' },
+                          { width: 150, text: (settingsObj['general.libraryName'] || 'Library') + ' Authority', style: 'signature', alignment: 'right' }
+                        ],
+                        margin: [0, 0, 0, 25]
+                      }
+                    ],
+                    margin: [20, 10, 20, 15]
+                  }
                 ]
               ]
             },
             layout: {
-              fillColor: function (rowIndex) {
-                return (rowIndex === 0) ? '#CCCCCC' : null;
-              }
+              hLineWidth: () => 1.5,
+              vLineWidth: () => 1.5,
+              hLineColor: () => '#000',
+              vLineColor: () => '#000',
             }
-          },
-          
-          { text: '\n' },
-          
-          // Total
-          {
-            columns: [
-              { width: '70%', text: '' },
-              {
-                width: '30%',
-                table: {
-                  body: [
-                    [
-                      { text: 'Total Amount:', style: 'label' },
-                      { text: `₹${payment.amount.toFixed(2)}`, style: 'total' }
-                    ]
-                  ]
-                },
-                layout: 'noBorders'
-              }
-            ]
-          },
-          
-          { text: '\n\n' },
-          
-          // Notes
-          payment.note ? [
-            { text: 'Notes:', style: 'label' },
-            { text: payment.note, style: 'small' },
-            { text: '\n' }
-          ] : {},
-          
-          // Footer
-          {
-            text: 'Thank you for your payment!',
-            style: 'footer',
-            alignment: 'center'
-          },
-          
-          {
-            text: `Generated on ${new Date().toLocaleString()}`,
-            style: 'small',
-            alignment: 'center',
-            margin: [0, 10, 0, 0]
           }
         ],
         
         styles: {
-          header: {
-            fontSize: 20,
+          title: {
+            fontSize: 24,
             bold: true,
-            color: '#2E86AB'
+            color: '#000'
           },
-          subheader: {
-            fontSize: 10,
-            color: '#666666'
-          },
-          receiptTitle: {
+          subtitle: {
             fontSize: 16,
             bold: true,
-            color: '#D32F2F'
+            color: '#000'
           },
-          receiptNumber: {
-            fontSize: 12,
-            color: '#666666'
-          },
-          label: {
-            fontSize: 10,
-            bold: true,
-            color: '#333333'
-          },
-          value: {
-            fontSize: 12,
-            color: '#000000'
-          },
-          small: {
-            fontSize: 9,
-            color: '#666666'
-          },
-          tableHeader: {
+          contact: {
             fontSize: 11,
-            bold: true,
-            fillColor: '#EEEEEE'
+            color: '#000'
           },
-          total: {
-            fontSize: 14,
-            bold: true,
-            color: '#D32F2F'
-          },
-          footer: {
+          fieldLabel: {
             fontSize: 12,
             bold: true,
-            color: '#2E86AB'
+            color: '#000'
+          },
+          fieldValue: {
+            fontSize: 12,
+            color: '#666'
+          },
+          underline: {
+            fontSize: 12,
+            color: '#000'
+          },
+          signature: {
+            fontSize: 11,
+            color: '#000'
           }
         },
         
