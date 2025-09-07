@@ -62,51 +62,43 @@ library-management/
 - npm or yarn
 - .NET 6.0 (for biometric integration)
 
-### Installation
+### Universal Installation (Works on Windows, Linux & macOS)
 
-1. **Clone the repository**
+1. **Clone and install**
    ```bash
    git clone https://github.com/Yashrajsalunkhe/library-management.git
    cd library-management
+   npm install
    ```
 
-2. **Run setup script**
+2. **Start the application**
    ```bash
-   ./scripts/setup.sh
+   npm start
    ```
 
-3. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+The `npm start` command automatically detects your platform and starts both the development server and Electron app!
 
-4. **Start development**
-   ```bash
-   npm run start
-   ```
+### Platform-Specific Guides
+- 🪟 **Windows**: See [WINDOWS_SETUP.md](WINDOWS_SETUP.md)
+- 🐧 **Linux/macOS**: Works out of the box with `npm start`
+- 🔀 **Cross-Platform**: See [CROSS_PLATFORM.md](CROSS_PLATFORM.md)
 
 ### Development Scripts
 
 ```bash
+# Universal (recommended)
+npm start                # Cross-platform startup
+
+# Platform-specific
+npm run start:windows    # Windows batch script
+npm run start:powershell # Windows PowerShell  
+npm run start:linux      # Linux/macOS shell script
+
 # Development
-npm run start        # Start both Vite and Electron
-npm run dev          # Start only Vite dev server
-npm run electron     # Start only Electron
-
-# Production
-npm run build        # Build React frontend
-npm run electron:build  # Package Electron app
-./scripts/build.sh   # Complete build process
-
-# Database
-./scripts/db.sh backup    # Backup database
-./scripts/db.sh restore   # Restore database
-./scripts/db.sh status    # Database status
-
-# Utilities
-npm run clean        # Clean build artifacts
-npm run rebuild      # Rebuild native dependencies
+npm run dev              # Frontend only
+npm run electron         # Electron only
+npm run build            # Production build
+npm run clean            # Clean cache
 ```
 
 ### Prerequisites
