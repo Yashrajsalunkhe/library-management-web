@@ -12,9 +12,11 @@ export const useNotification = () => {
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
+  const [idCounter, setIdCounter] = useState(0);
 
   const addNotification = (notification) => {
-    const id = Date.now().toString();
+    const id = `${Date.now()}-${idCounter}`;
+    setIdCounter(prev => prev + 1);
     const newNotification = {
       id,
       ...notification,

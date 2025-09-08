@@ -136,6 +136,24 @@ const createTables = () => {
     )
   `).run();
 
+  // Expenditures table
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS expenditures (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL,
+      amount REAL NOT NULL,
+      payment_mode TEXT DEFAULT 'cash' CHECK(payment_mode IN ('cash', 'card', 'upi', 'bank_transfer', 'cheque')),
+      date TEXT NOT NULL,
+      receipt_number TEXT,
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_by INTEGER,
+      FOREIGN KEY (created_by) REFERENCES users (id)
+    )
+  `).run();
+
   // Settings table
   db.prepare(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -144,22 +162,6 @@ const createTables = () => {
       value TEXT,
       description TEXT,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-
-  // Expenditures table
-  db.prepare(`
-    CREATE TABLE IF NOT EXISTS expenditures (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      amount REAL NOT NULL,
-      category TEXT NOT NULL,
-      description TEXT,
-      payment_mode TEXT DEFAULT 'cash' CHECK(payment_mode IN ('cash', 'card', 'upi', 'bank_transfer')),
-      bill_date TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      created_by INTEGER,
-      FOREIGN KEY (created_by) REFERENCES users (id)
     )
   `).run();
 

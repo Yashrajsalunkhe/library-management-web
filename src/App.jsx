@@ -78,7 +78,7 @@ const AppContent = () => {
       case 'payments':
         return <Payments />;
       case 'expenditures':
-        return <Expenditures />;
+        return <Expenditures initialAction={pageProps} />;
       case 'attendance':
         return <Attendance />;
       case 'reports':
