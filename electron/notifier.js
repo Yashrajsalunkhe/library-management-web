@@ -12,7 +12,7 @@ class NotificationService {
   // Initialize email transporter
   initEmailTransporter() {
     if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      this.emailTransporter = nodemailer.createTransporter({
+      this.emailTransporter = nodemailer.createTransport({
         host: process.env.EMAIL_HOST,
         port: parseInt(process.env.EMAIL_PORT) || 587,
         secure: false,
@@ -52,10 +52,14 @@ class NotificationService {
 
       // Log notification
       if (memberId) {
-        run(`
-          INSERT INTO notifications (member_id, type, subject, message, status, sent_at)
-          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [memberId, 'email', subject, text, 'sent']);
+        try {
+          run(`
+            INSERT INTO notifications (member_id, type, subject, message, status, sent_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `, [memberId, 'email', subject, text, 'sent']);
+        } catch (logError) {
+          console.warn('Failed to log notification to database:', logError.message);
+        }
       }
 
       return { success: true, messageId: result.messageId };
@@ -64,10 +68,14 @@ class NotificationService {
 
       // Log failed notification
       if (memberId) {
-        run(`
-          INSERT INTO notifications (member_id, type, subject, message, status, error_message)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `, [memberId, 'email', subject, text, 'failed', error.message]);
+        try {
+          run(`
+            INSERT INTO notifications (member_id, type, subject, message, status, error_message)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [memberId, 'email', subject, text, 'failed', error.message]);
+        } catch (logError) {
+          console.warn('Failed to log failed notification to database:', logError.message);
+        }
       }
 
       return { success: false, error: error.message };
@@ -110,10 +118,14 @@ class NotificationService {
 
       // Log notification
       if (memberId) {
-        run(`
-          INSERT INTO notifications (member_id, type, message, status, sent_at)
-          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [memberId, 'whatsapp', message, 'sent']);
+        try {
+          run(`
+            INSERT INTO notifications (member_id, type, message, status, sent_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `, [memberId, 'whatsapp', message, 'sent']);
+        } catch (logError) {
+          console.warn('Failed to log WhatsApp notification to database:', logError.message);
+        }
       }
 
       return { success: true, data: response.data };
@@ -122,10 +134,14 @@ class NotificationService {
 
       // Log failed notification
       if (memberId) {
-        run(`
-          INSERT INTO notifications (member_id, type, message, status, error_message)
-          VALUES (?, ?, ?, ?, ?)
-        `, [memberId, 'whatsapp', message, 'failed', error.response?.data?.message || error.message]);
+        try {
+          run(`
+            INSERT INTO notifications (member_id, type, message, status, error_message)
+            VALUES (?, ?, ?, ?, ?)
+          `, [memberId, 'whatsapp', message, 'failed', error.response?.data?.message || error.message]);
+        } catch (logError) {
+          console.warn('Failed to log failed WhatsApp notification to database:', logError.message);
+        }
       }
 
       return { success: false, error: error.message };

@@ -471,6 +471,7 @@ module.exports = (ipcMain) => {
         `, [planId, joinDate, format(newEndDate, 'yyyy-MM-dd'), memberId]);
 
         // Add payment record
+        const receiptNumber = `RCP-${Date.now()}`;
         const paymentInfo = run(`
           INSERT INTO payments (member_id, amount, mode, plan_id, note, receipt_number)
           VALUES (?, ?, ?, ?, ?, ?)
@@ -480,16 +481,86 @@ module.exports = (ipcMain) => {
           paymentDetails.mode,
           planId,
           paymentDetails.note || (isFirstPlan ? 'New membership plan' : 'Membership renewal'),
-          `RCP-${Date.now()}`
+          receiptNumber
         ]);
 
         return { 
           paymentId: paymentInfo.lastInsertRowid,
           newEndDate: format(newEndDate, 'yyyy-MM-dd'),
           joinDate: joinDate,
-          isFirstPlan: isFirstPlan
+          isFirstPlan: isFirstPlan,
+          receiptNumber: receiptNumber,
+          member: member,
+          plan: plan
         };
       });
+
+      // Send payment confirmation email if member has an email
+      if (result.member.email) {
+        try {
+          const NotificationService = require('./notifier');
+          const notifier = new NotificationService();
+          
+          // Wait a moment for the service to initialize
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          const emailSubject = result.isFirstPlan ? 
+            `Welcome to our Library - Membership Activated` : 
+            `Membership Renewed Successfully - ${result.member.name}`;
+          
+          const emailText = `
+Dear ${result.member.name},
+
+${result.isFirstPlan ? 'Welcome to our library! Your membership has been activated.' : 'Your membership has been successfully renewed.'}
+
+Payment Details:
+- Amount: ₹${result.plan.price}
+- Plan: ${result.plan.name}
+- Valid until: ${result.newEndDate}
+- Receipt Number: ${result.receiptNumber}
+- Payment Mode: ${paymentDetails.mode}
+
+Thank you for your payment!
+Library Management Team
+          `;
+
+          const emailHtml = `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <h2 style="color: #28a745;">${result.isFirstPlan ? 'Welcome to Our Library!' : 'Membership Renewed Successfully'}</h2>
+  <p>Dear <strong>${result.member.name}</strong>,</p>
+  
+  <p>${result.isFirstPlan ? 'Welcome to our library! Your membership has been activated.' : 'Your membership has been successfully renewed.'}</p>
+  
+  <div style="background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <h3 style="margin-top: 0; color: #155724;">Payment Details</h3>
+    <p style="margin: 5px 0;"><strong>Amount:</strong> ₹${result.plan.price}</p>
+    <p style="margin: 5px 0;"><strong>Plan:</strong> ${result.plan.name}</p>
+    <p style="margin: 5px 0;"><strong>Valid until:</strong> ${result.newEndDate}</p>
+    <p style="margin: 5px 0;"><strong>Receipt Number:</strong> ${result.receiptNumber}</p>
+    <p style="margin: 5px 0;"><strong>Payment Mode:</strong> ${paymentDetails.mode}</p>
+  </div>
+  
+  <p>Thank you for your payment!</p>
+  
+  <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+  <p style="color: #666; font-size: 12px;">Library Management Team</p>
+</div>
+          `;
+
+          await notifier.sendEmail({
+            to: result.member.email,
+            subject: emailSubject,
+            text: emailText,
+            html: emailHtml,
+            memberId: result.member.id
+          });
+
+          console.log(`Payment confirmation email sent to ${result.member.email}`);
+        } catch (emailError) {
+          console.warn('Failed to send payment confirmation email:', emailError.message);
+          // Don't fail the entire operation if email fails
+        }
+      }
 
       return { success: true, data: result };
     } catch (error) {
@@ -1615,14 +1686,23 @@ module.exports = (ipcMain) => {
   
   ipcMain.handle('notification:send-welcome', async (event, memberData) => {
     try {
-      // Placeholder for welcome notification functionality
-      // This could be expanded to send email, SMS, or other notifications
-      console.log('Welcome notification requested for member:', memberData?.name || 'Unknown');
+      // Import notification service directly
+      const NotificationService = require('./notifier');
+      const notifier = new NotificationService();
       
-      // For now, just return success without actually sending anything
+      // Wait a moment for the service to initialize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Send welcome message using the notification service
+      const results = await notifier.sendWelcomeMessage(memberData);
+      
+      console.log('Welcome notification sent for member:', memberData?.name || 'Unknown');
+      console.log('Results:', results);
+      
       return { 
         success: true, 
-        message: 'Welcome notification logged (implementation pending)' 
+        message: 'Welcome notification sent successfully',
+        results: results
       };
     } catch (error) {
       console.error('Welcome notification error:', error);
