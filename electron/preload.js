@@ -64,6 +64,7 @@ contextBridge.exposeInMainWorld('api', {
   report: {
     attendance: (filters) => ipcRenderer.invoke('report:attendance', filters),
     payments: (filters) => ipcRenderer.invoke('report:payments', filters),
+    expenditures: (filters) => ipcRenderer.invoke('report:expenditures', filters),
     export: (options) => ipcRenderer.invoke('report:export', options),
     exportAttendance: (options) => ipcRenderer.invoke('report:export-attendance', options),
     exportPayments: (options) => ipcRenderer.invoke('report:export-payments', options),

@@ -980,6 +980,45 @@ module.exports = (ipcMain) => {
     }
   });
 
+  ipcMain.handle('report:expenditures', async (event, { dateFrom, dateTo }) => {
+    try {
+      console.log('Fetching expenditures report from', dateFrom, 'to', dateTo);
+      
+      // Validate date inputs
+      if (!dateFrom || !dateTo) {
+        return { success: false, message: 'Date range is required' };
+      }
+      
+      // Ensure proper date format (YYYY-MM-DD)
+      const fromDate = new Date(dateFrom).toISOString().slice(0, 10);
+      const toDate = new Date(dateTo).toISOString().slice(0, 10);
+      
+      const expenditures = query(`
+        SELECT 
+          e.id,
+          e.description,
+          e.category,
+          e.amount,
+          e.payment_mode,
+          e.receipt_number,
+          e.date as expenditure_date,
+          e.notes,
+          e.created_at,
+          u.full_name as created_by_name
+        FROM expenditures e
+        LEFT JOIN users u ON e.created_by = u.id
+        WHERE DATE(e.date) BETWEEN ? AND ?
+        ORDER BY e.date DESC, e.created_at DESC
+      `, [fromDate, toDate]);
+
+      console.log('Found', expenditures.length, 'expenditure records');
+      return { success: true, data: expenditures };
+    } catch (error) {
+      console.error('Error fetching expenditures report:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
   // Generate receipt on demand
   ipcMain.handle('report:generate-receipt', async (event, { paymentId }) => {
     try {
@@ -1201,6 +1240,44 @@ module.exports = (ipcMain) => {
             amountColumn.numFmt = '₹#,##0.00';
             break;
             
+          case 'expenditures':
+            // Set headers
+            const expenditureHeaders = ['Date', 'Description', 'Category', 'Amount (₹)', 'Payment Mode', 'Receipt #', 'Notes', 'Created By'];
+            worksheet.getRow(headerRowIndex).values = expenditureHeaders;
+            
+            data.forEach(expenditure => {
+              const expenditureDate = expenditure.expenditure_date || expenditure.date;
+              const date = expenditureDate ? new Date(expenditureDate).toISOString().slice(0, 10) : '';
+              
+              worksheet.addRow([
+                date,
+                expenditure.description || '',
+                expenditure.category || '',
+                expenditure.amount || 0,
+                (expenditure.payment_mode || '').charAt(0).toUpperCase() + (expenditure.payment_mode || '').slice(1),
+                expenditure.receipt_number || '',
+                expenditure.notes || '',
+                expenditure.created_by_name || ''
+              ]);
+            });
+            
+            // Set column widths
+            worksheet.columns = [
+              { width: 12 }, // Date
+              { width: 25 }, // Description
+              { width: 15 }, // Category
+              { width: 12 }, // Amount
+              { width: 15 }, // Payment Mode
+              { width: 15 }, // Receipt #
+              { width: 30 }, // Notes
+              { width: 15 }  // Created By
+            ];
+            
+            // Format amount column as currency
+            const expenditureAmountColumn = worksheet.getColumn(4);
+            expenditureAmountColumn.numFmt = '₹#,##0.00';
+            break;
+            
           case 'members':
             // Set headers
             const memberHeaders = ['Name', 'Email', 'Phone', 'Plan', 'Join Date', 'End Date', 'Status'];
@@ -1303,6 +1380,19 @@ module.exports = (ipcMain) => {
               const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
               
               csvContent += `${escapeCsv(member.name)},${escapeCsv(member.email)},${escapeCsv(member.phone)},${escapeCsv(member.plan_name || member.plan)},${escapeCsv(joinDate)},${escapeCsv(endDate)},${escapeCsv(member.status)}\n`;
+            });
+            break;
+            
+          case 'expenditures':
+            csvContent = 'Date,Description,Category,Amount,Payment Mode,Receipt #,Notes,Created By\n';
+            data.forEach(expenditure => {
+              const expenditureDate = expenditure.expenditure_date || expenditure.date;
+              const date = expenditureDate ? new Date(expenditureDate).toISOString().slice(0, 10) : '';
+              
+              // Escape quotes in data and wrap in quotes
+              const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+              
+              csvContent += `${escapeCsv(date)},${escapeCsv(expenditure.description)},${escapeCsv(expenditure.category)},${escapeCsv(expenditure.amount)},${escapeCsv(expenditure.payment_mode)},${escapeCsv(expenditure.receipt_number)},${escapeCsv(expenditure.notes)},${escapeCsv(expenditure.created_by_name)}\n`;
             });
             break;
         }

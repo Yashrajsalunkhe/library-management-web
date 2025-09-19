@@ -11,6 +11,7 @@ const Reports = ({ initialTab }) => {
     overview: null,
     attendance: [],
     payments: [],
+    expenditures: [],
     members: []
   });
   const [loading, setLoading] = useState(false);
@@ -20,6 +21,7 @@ const Reports = ({ initialTab }) => {
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'attendance', label: 'Attendance', icon: '📅' },
     { id: 'payments', label: 'Payments', icon: '💰' },
+    { id: 'expenditures', label: 'Expenditures', icon: '💸' },
     { id: 'members', label: 'Members', icon: '👥' }
   ];
 
@@ -56,6 +58,9 @@ const Reports = ({ initialTab }) => {
           break;
         case 'payments':
           await loadPaymentsReport();
+          break;
+        case 'expenditures':
+          await loadExpendituresReport();
           break;
         case 'members':
           await loadMembersReport();
@@ -116,6 +121,26 @@ const Reports = ({ initialTab }) => {
     } catch (error) {
       console.error('Failed to load payments report:', error);
       setReportData(prev => ({ ...prev, payments: [] }));
+    }
+  };
+
+  const loadExpendituresReport = async () => {
+    try {
+      console.log('Loading expenditures report for date range:', dateRange);
+      const result = await window.api.report.expenditures({
+        dateFrom: dateRange.from,
+        dateTo: dateRange.to
+      });
+      if (result.success) {
+        console.log('Expenditures report loaded:', result.data.length, 'records');
+        setReportData(prev => ({ ...prev, expenditures: result.data }));
+      } else {
+        console.error('Failed to load expenditures report:', result.message);
+        setReportData(prev => ({ ...prev, expenditures: [] }));
+      }
+    } catch (error) {
+      console.error('Failed to load expenditures report:', error);
+      setReportData(prev => ({ ...prev, expenditures: [] }));
     }
   };
 
@@ -347,6 +372,87 @@ const Reports = ({ initialTab }) => {
     );
   };
 
+  const renderExpendituresReport = () => {
+    if (loading) return <div className="loading">Loading expenditures report...</div>;
+
+    const totalAmount = reportData.expenditures.reduce((sum, expenditure) => sum + (expenditure.amount || 0), 0);
+
+    return (
+      <div className="report-content">
+        <div className="report-header">
+          <h3>Expenditures Report ({dateRange.from} to {dateRange.to})</h3>
+          <div className="report-summary">
+            <span className="summary-item">Total: ₹{totalAmount.toLocaleString()}</span>
+            <span className="summary-item">Count: {reportData.expenditures.length}</span>
+          </div>
+          <div className="report-actions">
+            <button 
+              onClick={() => exportReport('expenditures', 'csv')} 
+              className="button button-secondary"
+              disabled={exportLoading || !reportData.expenditures?.length}
+            >
+              {exportLoading ? '⏳ Exporting...' : '📄 Export CSV'}
+            </button>
+            <button 
+              onClick={() => exportReport('expenditures', 'xlsx')} 
+              className="button button-primary"
+              disabled={exportLoading || !reportData.expenditures?.length}
+            >
+              {exportLoading ? '⏳ Exporting...' : '📊 Export Excel'}
+            </button>
+          </div>
+        </div>
+        
+        <div className="report-table-container">
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Amount</th>
+                <th>Payment Mode</th>
+                <th>Receipt #</th>
+                <th>Created By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportData.expenditures.map((expenditure, index) => {
+                // Safely format the date
+                let dateDisplay = '-';
+                try {
+                  const dateValue = expenditure.expenditure_date || expenditure.date;
+                  if (dateValue) {
+                    dateDisplay = format(new Date(dateValue), 'dd/MM/yyyy');
+                  }
+                } catch (error) {
+                  console.error('Date formatting error for expenditure:', expenditure, error);
+                  dateDisplay = expenditure.expenditure_date || expenditure.date || '-';
+                }
+                
+                return (
+                  <tr key={expenditure.id || index}>
+                    <td>{dateDisplay}</td>
+                    <td>{expenditure.description || '-'}</td>
+                    <td>{expenditure.category || '-'}</td>
+                    <td>₹{expenditure.amount?.toLocaleString() || '0'}</td>
+                    <td>{expenditure.payment_mode || '-'}</td>
+                    <td>{expenditure.receipt_number || '-'}</td>
+                    <td>{expenditure.created_by_name || '-'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          
+          {reportData.expenditures.length === 0 && (
+            <div className="no-data">No expenditure data found for selected date range</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderMembersReport = () => {
     if (loading) return <div className="loading">Loading members report...</div>;
 
@@ -428,6 +534,8 @@ const Reports = ({ initialTab }) => {
         return renderAttendanceReport();
       case 'payments':
         return renderPaymentsReport();
+      case 'expenditures':
+        return renderExpendituresReport();
       case 'members':
         return renderMembersReport();
       default:
