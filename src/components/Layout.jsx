@@ -23,6 +23,9 @@ const Layout = ({ children, currentPage, onPageChange }) => {
           case 'new-member':
             onPageChange('members', { action: 'new' });
             break;
+          case 'new-expenditure':
+            onPageChange('expenditures', { action: 'new' });
+            break;
           case 'settings':
             onPageChange('settings');
             break;

@@ -71,7 +71,7 @@ const Dashboard = () => {
   return (
     <div>
       {/* Stats Cards */}
-      <div className="grid grid-cols-4 mb-4">
+      <div className="grid grid-cols-4 gap-4 mb-4">
         <div className="card">
           <div className="flex items-center justify-between">
             <div>
@@ -117,6 +117,21 @@ const Dashboard = () => {
               </p>
             </div>
             <span style={{ fontSize: '2rem', opacity: 0.6 }}>💸</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Second row of stats */}
+      <div className="grid grid-cols-4 gap-4 mb-4">
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Total Expenditures</p>
+              <p className="text-xl font-semibold text-red-600">
+                ₹{stats?.totalExpenditure?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+            <span style={{ fontSize: '2rem', opacity: 0.6 }}>💳</span>
           </div>
         </div>
 

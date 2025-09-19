@@ -58,15 +58,28 @@ const createWindow = async () => {
 
   // Load the app
   if (isDev) {
-    console.log('Loading from development server: http://localhost:5173/');
-    try {
-      await mainWindow.loadURL('http://localhost:5173/');
-      console.log('Successfully loaded from development server');
-    } catch (error) {
-      console.error('Failed to load from development server:', error);
+    // Try multiple ports for dev server
+    const ports = [5173, 5174, 5175, 3000];
+    let loaded = false;
+    
+    for (const port of ports) {
+      try {
+        console.log(`Loading from development server: http://localhost:${port}/`);
+        await mainWindow.loadURL(`http://localhost:${port}/`);
+        console.log(`Successfully loaded from development server on port ${port}`);
+        loaded = true;
+        break;
+      } catch (error) {
+        console.log(`Failed to load from port ${port}, trying next...`);
+      }
+    }
+    
+    if (!loaded) {
+      console.error('Failed to load from any development server port');
       // Try to load a fallback page
       mainWindow.loadFile(path.join(__dirname, '../index.html'));
     }
+    
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
