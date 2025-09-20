@@ -3058,3 +3058,146 @@ select.form-input {
     margin-bottom: 1.5rem;
   }
 }
+
+/* Backup Management Styles */
+.backup-list {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.backup-list-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  font-weight: 600;
+  color: #495057;
+}
+
+.backup-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.backup-item:last-child {
+  border-bottom: none;
+}
+
+.backup-item:hover {
+  background-color: #f8f9fa;
+}
+
+.backup-name {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  color: #495057;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-date {
+  color: #6c757d;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.backup-size {
+  color: #6c757d;
+  font-size: 0.9rem;
+  text-align: right;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.backup-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.button-small {
+  padding: 0.4rem 0.8rem !important;
+  font-size: 0.8rem !important;
+  line-height: 1 !important;
+  min-height: auto !important;
+}
+
+.button-danger {
+  background-color: #dc3545;
+  color: white;
+  border: 1px solid #dc3545;
+}
+
+.button-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+.button-danger:disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  opacity: 0.65;
+}
+
+.no-data-container {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 1rem;
+}
+
+.no-data-container p {
+  color: #6c757d;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .backup-list-header,
+  .backup-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .backup-item {
+    padding: 1rem 0.75rem;
+  }
+  
+  .backup-name {
+    order: 1;
+    margin-bottom: 0.5rem;
+  }
+  
+  .backup-date {
+    order: 2;
+    font-size: 0.8rem;
+  }
+  
+  .backup-size {
+    order: 3;
+    text-align: left;
+    font-size: 0.8rem;
+  }
+  
+  .backup-actions {
+    order: 4;
+    justify-content: flex-start;
+    margin-top: 0.5rem;
+  }
+  
+  .backup-list-header {
+    display: none;
+  }
+}

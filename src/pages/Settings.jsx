@@ -105,6 +105,8 @@ const Settings = () => {
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [newHoliday, setNewHoliday] = useState({ date: '', name: '' });
+  const [backupList, setBackupList] = useState([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
 
   // Password change state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -171,6 +173,13 @@ const Settings = () => {
       handleSettingChange('membership', 'idDocumentTypes', defaultTypes);
     }
   }, [settings?.membership]);
+
+  // Load backups when backup tab is active
+  useEffect(() => {
+    if (activeTab === 'backup') {
+      loadBackups();
+    }
+  }, [activeTab]);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -450,28 +459,53 @@ const Settings = () => {
     setLoading(true);
     try {
       if (window.api?.backup?.createBackup) {
-        await window.api.backup.createBackup();
-        success('Backup created successfully');
+        const result = await window.api.backup.createBackup();
+        if (result.success) {
+          success(`Backup created successfully at ${result.timestamp}`);
+          // Refresh the backup list if we're on the backup tab
+          if (activeTab === 'backup') {
+            await loadBackups();
+          }
+        } else {
+          error(result.message || 'Failed to create backup');
+        }
+      } else {
+        error('Backup functionality not available');
       }
     } catch (error) {
       console.error('Error creating backup:', error);
-      error('Failed to create backup');
+      error('Failed to create backup: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
   };
 
   const restoreBackup = async () => {
-    if (confirm('Are you sure you want to restore from backup? This will replace all current data.')) {
+    if (confirm('Are you sure you want to restore from backup? This will replace all current data and may require an application restart.')) {
       setLoading(true);
       try {
         if (window.api?.backup?.restoreBackup) {
-          await window.api.backup.restoreBackup();
-          success('Backup restored successfully');
+          const result = await window.api.backup.restoreBackup();
+          if (result.success) {
+            success(result.message || 'Backup restored successfully');
+            if (result.requiresRestart) {
+              if (confirm('The application needs to restart to complete the restore. Restart now?')) {
+                if (window.api?.app?.restart) {
+                  window.api.app.restart();
+                } else {
+                  alert('Please manually restart the application to complete the restore process.');
+                }
+              }
+            }
+          } else {
+            error(result.message || 'Failed to restore backup');
+          }
+        } else {
+          error('Backup restore functionality not available');
         }
       } catch (error) {
         console.error('Error restoring backup:', error);
-        error('Failed to restore backup');
+        error('Failed to restore backup: ' + (error.message || 'Unknown error'));
       } finally {
         setLoading(false);
       }
@@ -490,6 +524,85 @@ const Settings = () => {
       error('Failed to export data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBackups = async () => {
+    setLoadingBackups(true);
+    try {
+      if (window.api?.backup?.listBackups) {
+        const result = await window.api.backup.listBackups();
+        if (result.success) {
+          setBackupList(result.backups || []);
+        } else {
+          console.error('Failed to load backups:', result.message);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading backups:', error);
+    } finally {
+      setLoadingBackups(false);
+    }
+  };
+
+  const refreshBackups = async () => {
+    await loadBackups();
+    success('Backup list refreshed');
+  };
+
+  const restoreSpecificBackup = async (backup) => {
+    if (confirm(`Are you sure you want to restore from "${backup.name}"? This will replace all current data and may require an application restart.`)) {
+      setLoading(true);
+      try {
+        if (window.api?.backup?.restoreSpecificBackup) {
+          const result = await window.api.backup.restoreSpecificBackup(backup.path);
+          if (result.success) {
+            success(result.message || 'Backup restored successfully');
+            if (result.requiresRestart) {
+              if (confirm('The application needs to restart to complete the restore. Restart now?')) {
+                if (window.api?.app?.restart) {
+                  window.api.app.restart();
+                } else {
+                  alert('Please manually restart the application to complete the restore process.');
+                }
+              }
+            }
+          } else {
+            error(result.message || 'Failed to restore backup');
+          }
+        } else {
+          error('Specific backup restore functionality not available');
+        }
+      } catch (error) {
+        console.error('Error restoring specific backup:', error);
+        error('Failed to restore backup: ' + (error.message || 'Unknown error'));
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const deleteBackup = async (backup) => {
+    if (confirm(`Are you sure you want to delete the backup "${backup.name}"? This action cannot be undone.`)) {
+      setLoading(true);
+      try {
+        if (window.api?.backup?.deleteBackup) {
+          const result = await window.api.backup.deleteBackup(backup.path);
+          if (result.success) {
+            success('Backup deleted successfully');
+            await loadBackups(); // Refresh the list
+          } else {
+            error(result.message || 'Failed to delete backup');
+          }
+        } else {
+          error('Backup deletion functionality not available');
+        }
+      } catch (error) {
+        console.error('Error deleting backup:', error);
+        error('Failed to delete backup: ' + (error.message || 'Unknown error'));
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -1724,7 +1837,65 @@ const Settings = () => {
         >
           📤 Export Data
         </button>
+        <button 
+          onClick={refreshBackups} 
+          className="button button-secondary"
+          disabled={loadingBackups}
+        >
+          🔄 Refresh Backups
+        </button>
       </div>
+
+      <h3>Available Backups</h3>
+      {loadingBackups ? (
+        <div className="loading-container">
+          <p>Loading backups...</p>
+        </div>
+      ) : backupList.length === 0 ? (
+        <div className="no-data-container">
+          <p>No backups found. Create your first backup using the button above.</p>
+        </div>
+      ) : (
+        <div className="backup-list">
+          <div className="backup-list-header">
+            <span>Backup File</span>
+            <span>Created</span>
+            <span>Size</span>
+            <span>Actions</span>
+          </div>
+          {backupList.map((backup, index) => (
+            <div key={index} className="backup-item">
+              <span className="backup-name" title={backup.path}>
+                {backup.name}
+              </span>
+              <span className="backup-date">
+                {new Date(backup.created).toLocaleString()}
+              </span>
+              <span className="backup-size">
+                {backup.sizeFormatted}
+              </span>
+              <div className="backup-actions">
+                <button 
+                  onClick={() => restoreSpecificBackup(backup)}
+                  className="button button-small button-secondary"
+                  disabled={loading}
+                  title="Restore this backup"
+                >
+                  📥 Restore
+                </button>
+                <button 
+                  onClick={() => deleteBackup(backup)}
+                  className="button button-small button-danger"
+                  disabled={loading}
+                  title="Delete this backup"
+                >
+                  🗑️ Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 

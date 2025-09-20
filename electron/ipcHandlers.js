@@ -1692,24 +1692,231 @@ Library Management Team
     try {
       const fs = require('fs');
       const path = require('path');
-      const { shell } = require('electron');
       
       const backupDir = path.join(__dirname, '..', 'backups');
       if (!fs.existsSync(backupDir)) {
         fs.mkdirSync(backupDir, { recursive: true });
       }
       
-      const timestamp = new Date().toISOString().slice(0, 10);
+      // Create timestamp with both date and time to avoid collisions
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const backupFile = path.join(backupDir, `library-backup-${timestamp}.db`);
       const dbFile = path.join(__dirname, 'library.db');
+      
+      // Check if database file exists
+      if (!fs.existsSync(dbFile)) {
+        return { success: false, message: 'Database file not found. Cannot create backup.' };
+      }
+      
+      // Ensure database connections are closed before backup
+      if (db) {
+        // Checkpoint the WAL file to main database
+        try {
+          await new Promise((resolve, reject) => {
+            db.run('PRAGMA wal_checkpoint(TRUNCATE)', (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+        } catch (checkpointError) {
+          console.warn('WAL checkpoint warning:', checkpointError);
+        }
+      }
       
       // Copy database file
       fs.copyFileSync(dbFile, backupFile);
       
-      return { success: true, message: 'Backup created successfully', filepath: backupFile };
+      // Copy WAL and SHM files if they exist
+      const walFile = dbFile + '-wal';
+      const shmFile = dbFile + '-shm';
+      
+      if (fs.existsSync(walFile)) {
+        fs.copyFileSync(walFile, backupFile + '-wal');
+      }
+      if (fs.existsSync(shmFile)) {
+        fs.copyFileSync(shmFile, backupFile + '-shm');
+      }
+      
+      return { 
+        success: true, 
+        message: 'Backup created successfully', 
+        filepath: backupFile,
+        timestamp: timestamp
+      };
     } catch (error) {
       console.error('Backup error:', error);
-      return { success: false, message: error.message };
+      return { success: false, message: `Failed to create backup: ${error.message}` };
+    }
+  });
+
+  ipcMain.handle('backup:listBackups', async (event) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      const backupDir = path.join(__dirname, '..', 'backups');
+      
+      if (!fs.existsSync(backupDir)) {
+        return { success: true, backups: [] };
+      }
+      
+      const files = fs.readdirSync(backupDir);
+      const backups = files
+        .filter(file => file.endsWith('.db'))
+        .map(file => {
+          const filePath = path.join(backupDir, file);
+          const stats = fs.statSync(filePath);
+          return {
+            name: file,
+            path: filePath,
+            size: stats.size,
+            created: stats.mtime,
+            sizeFormatted: formatFileSize(stats.size)
+          };
+        })
+        .sort((a, b) => b.created - a.created); // Sort by creation date, newest first
+      
+      return { success: true, backups };
+    } catch (error) {
+      console.error('List backups error:', error);
+      return { success: false, message: `Failed to list backups: ${error.message}` };
+    }
+  });
+
+  // Helper function to format file size
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  ipcMain.handle('backup:restoreSpecificBackup', async (event, backupPath) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Validate backup file exists and is readable
+      if (!fs.existsSync(backupPath)) {
+        return { success: false, message: 'Selected backup file does not exist' };
+      }
+      
+      // Check if backup file is a valid SQLite database
+      try {
+        const stats = fs.statSync(backupPath);
+        if (stats.size === 0) {
+          return { success: false, message: 'Selected backup file is empty' };
+        }
+      } catch (statsError) {
+        return { success: false, message: 'Cannot read backup file properties' };
+      }
+      
+      const dbFile = path.join(__dirname, 'library.db');
+      
+      // Close current database connection before restore
+      if (db) {
+        try {
+          await new Promise((resolve, reject) => {
+            db.close((err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+        } catch (closeError) {
+          console.warn('Database close warning:', closeError);
+        }
+      }
+      
+      // Create backup of current database before restore
+      const currentBackupFile = path.join(path.dirname(dbFile), 
+        `library-backup-before-restore-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.db`);
+      
+      if (fs.existsSync(dbFile)) {
+        try {
+          fs.copyFileSync(dbFile, currentBackupFile);
+        } catch (backupCurrentError) {
+          console.warn('Could not backup current database:', backupCurrentError);
+        }
+      }
+      
+      // Copy backup file to database location
+      fs.copyFileSync(backupPath, dbFile);
+      
+      // Also restore WAL and SHM files if they exist with the backup
+      const backupWalFile = backupPath + '-wal';
+      const backupShmFile = backupPath + '-shm';
+      const dbWalFile = dbFile + '-wal';
+      const dbShmFile = dbFile + '-shm';
+      
+      // Remove existing WAL and SHM files
+      if (fs.existsSync(dbWalFile)) {
+        fs.unlinkSync(dbWalFile);
+      }
+      if (fs.existsSync(dbShmFile)) {
+        fs.unlinkSync(dbShmFile);
+      }
+      
+      // Copy backup WAL and SHM files if they exist
+      if (fs.existsSync(backupWalFile)) {
+        fs.copyFileSync(backupWalFile, dbWalFile);
+      }
+      if (fs.existsSync(backupShmFile)) {
+        fs.copyFileSync(backupShmFile, dbShmFile);
+      }
+      
+      // Reinitialize database connection
+      await initDatabase();
+      
+      return { 
+        success: true, 
+        message: 'Backup restored successfully. Application will restart to ensure all data is properly loaded.',
+        requiresRestart: true
+      };
+    } catch (error) {
+      console.error('Restore specific backup error:', error);
+      return { success: false, message: `Failed to restore backup: ${error.message}` };
+    }
+  });
+
+  ipcMain.handle('backup:deleteBackup', async (event, backupPath) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Validate backup file exists
+      if (!fs.existsSync(backupPath)) {
+        return { success: false, message: 'Backup file does not exist' };
+      }
+      
+      // Ensure the backup is in the backups directory for security
+      const backupDir = path.join(__dirname, '..', 'backups');
+      const normalizedBackupPath = path.resolve(backupPath);
+      const normalizedBackupDir = path.resolve(backupDir);
+      
+      if (!normalizedBackupPath.startsWith(normalizedBackupDir)) {
+        return { success: false, message: 'Invalid backup file location' };
+      }
+      
+      // Delete the backup file
+      fs.unlinkSync(backupPath);
+      
+      // Also delete associated WAL and SHM files if they exist
+      const walFile = backupPath + '-wal';
+      const shmFile = backupPath + '-shm';
+      
+      if (fs.existsSync(walFile)) {
+        fs.unlinkSync(walFile);
+      }
+      if (fs.existsSync(shmFile)) {
+        fs.unlinkSync(shmFile);
+      }
+      
+      return { success: true, message: 'Backup deleted successfully' };
+    } catch (error) {
+      console.error('Delete backup error:', error);
+      return { success: false, message: `Failed to delete backup: ${error.message}` };
     }
   });
 
@@ -1731,16 +1938,86 @@ Library Management Team
         const backupFile = result.filePaths[0];
         const dbFile = path.join(__dirname, 'library.db');
         
+        // Validate backup file exists and is readable
+        if (!fs.existsSync(backupFile)) {
+          return { success: false, message: 'Selected backup file does not exist' };
+        }
+        
+        // Check if backup file is a valid SQLite database
+        try {
+          const stats = fs.statSync(backupFile);
+          if (stats.size === 0) {
+            return { success: false, message: 'Selected backup file is empty' };
+          }
+        } catch (statsError) {
+          return { success: false, message: 'Cannot read backup file properties' };
+        }
+        
+        // Close current database connection before restore
+        if (db) {
+          try {
+            await new Promise((resolve, reject) => {
+              db.close((err) => {
+                if (err) reject(err);
+                else resolve();
+              });
+            });
+          } catch (closeError) {
+            console.warn('Database close warning:', closeError);
+          }
+        }
+        
+        // Create backup of current database before restore
+        const currentBackupFile = path.join(path.dirname(dbFile), 
+          `library-backup-before-restore-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.db`);
+        
+        if (fs.existsSync(dbFile)) {
+          try {
+            fs.copyFileSync(dbFile, currentBackupFile);
+          } catch (backupCurrentError) {
+            console.warn('Could not backup current database:', backupCurrentError);
+          }
+        }
+        
         // Copy backup file to database location
         fs.copyFileSync(backupFile, dbFile);
         
-        return { success: true, message: 'Backup restored successfully' };
+        // Also restore WAL and SHM files if they exist with the backup
+        const backupWalFile = backupFile + '-wal';
+        const backupShmFile = backupFile + '-shm';
+        const dbWalFile = dbFile + '-wal';
+        const dbShmFile = dbFile + '-shm';
+        
+        // Remove existing WAL and SHM files
+        if (fs.existsSync(dbWalFile)) {
+          fs.unlinkSync(dbWalFile);
+        }
+        if (fs.existsSync(dbShmFile)) {
+          fs.unlinkSync(dbShmFile);
+        }
+        
+        // Copy backup WAL and SHM files if they exist
+        if (fs.existsSync(backupWalFile)) {
+          fs.copyFileSync(backupWalFile, dbWalFile);
+        }
+        if (fs.existsSync(backupShmFile)) {
+          fs.copyFileSync(backupShmFile, dbShmFile);
+        }
+        
+        // Reinitialize database connection
+        await initDatabase();
+        
+        return { 
+          success: true, 
+          message: 'Backup restored successfully. Application will restart to ensure all data is properly loaded.',
+          requiresRestart: true
+        };
       }
       
       return { success: false, message: 'No backup file selected' };
     } catch (error) {
       console.error('Restore backup error:', error);
-      return { success: false, message: error.message };
+      return { success: false, message: `Failed to restore backup: ${error.message}` };
     }
   });
 
@@ -2044,6 +2321,22 @@ Library Management Team
       };
     } catch (error) {
       console.error('Expenditure stats error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // APP MANAGEMENT
+  // ===================
+  
+  ipcMain.handle('app:restart', async (event) => {
+    try {
+      const { app } = require('electron');
+      app.relaunch();
+      app.exit();
+      return { success: true };
+    } catch (error) {
+      console.error('App restart error:', error);
       return { success: false, message: error.message };
     }
   });

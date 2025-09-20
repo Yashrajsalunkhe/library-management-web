@@ -113,12 +113,20 @@ contextBridge.exposeInMainWorld('api', {
   // Backup
   backup: {
     createBackup: () => ipcRenderer.invoke('backup:createBackup'),
-    restoreBackup: () => ipcRenderer.invoke('backup:restoreBackup')
+    restoreBackup: () => ipcRenderer.invoke('backup:restoreBackup'),
+    listBackups: () => ipcRenderer.invoke('backup:listBackups'),
+    restoreSpecificBackup: (backupPath) => ipcRenderer.invoke('backup:restoreSpecificBackup', backupPath),
+    deleteBackup: (backupPath) => ipcRenderer.invoke('backup:deleteBackup', backupPath)
   },
 
   // Data
   data: {
     exportData: () => ipcRenderer.invoke('data:exportData')
+  },
+
+  // App
+  app: {
+    restart: () => ipcRenderer.invoke('app:restart')
   },
 
   // File operations
