@@ -86,6 +86,111 @@ module.exports = (ipcMain) => {
     }
   });
 
+  // Password change OTP generation
+  ipcMain.handle('auth:request-password-change-otp', async (event, { currentPassword, userId }) => {
+    try {
+      // Get the specific user by ID, fallback to any active user for backward compatibility
+      const user = userId 
+        ? get('SELECT * FROM users WHERE id = ? AND is_active = 1', [userId])
+        : get('SELECT * FROM users WHERE is_active = 1 LIMIT 1');
+      
+      if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
+        return { success: false, message: 'Current password is incorrect' };
+      }
+
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiryTime = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+
+      // Store OTP in database or memory (for simplicity, using a table)
+      run(`
+        INSERT OR REPLACE INTO password_change_otps (user_id, otp, expires_at, created_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `, [user.id, otp, expiryTime.toISOString()]);
+
+      // Get user email from settings or user table
+      const emailSetting = get('SELECT value FROM settings WHERE key = ?', ['general.email']);
+      const userEmail = user.email || emailSetting?.value;
+
+      if (!userEmail) {
+        return { success: false, message: 'No email address configured for OTP delivery' };
+      }
+
+      // Send OTP via email using the notification service
+      const NotificationService = require('./notifier');
+      const notifier = new NotificationService();
+      
+      const emailResult = await notifier.sendEmail({
+        to: userEmail,
+        subject: 'Password Change Verification - Library Management System',
+        text: `Your OTP for password change is: ${otp}. This OTP will expire in 5 minutes.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Password Change Verification</h2>
+            <p>You have requested to change your password. Please use the following OTP to complete the process:</p>
+            <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
+              <h1 style="color: #007bff; font-size: 32px; margin: 0; letter-spacing: 5px;">${otp}</h1>
+            </div>
+            <p><strong>This OTP will expire in 5 minutes.</strong></p>
+            <p>If you did not request this password change, please ignore this email.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 12px;">This is an automated message from Library Management System.</p>
+          </div>
+        `
+      });
+
+      if (emailResult.success) {
+        return { success: true, message: 'OTP sent to your email address' };
+      } else {
+        return { success: false, message: 'Failed to send OTP email' };
+      }
+    } catch (error) {
+      console.error('Password change OTP error:', error);
+      return { success: false, message: 'Failed to generate OTP' };
+    }
+  });
+
+  // Password change with OTP verification
+  ipcMain.handle('auth:change-password', async (event, { currentPassword, newPassword, otp, userId }) => {
+    try {
+      // Get the specific user by ID, fallback to any active user for backward compatibility
+      const user = userId 
+        ? get('SELECT * FROM users WHERE id = ? AND is_active = 1', [userId])
+        : get('SELECT * FROM users WHERE is_active = 1 LIMIT 1');
+      
+      if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
+        return { success: false, message: 'Current password is incorrect' };
+      }
+
+      // Verify OTP
+      const otpRecord = get(`
+        SELECT * FROM password_change_otps 
+        WHERE user_id = ? AND otp = ? AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY created_at DESC LIMIT 1
+      `, [user.id, otp]);
+
+      if (!otpRecord) {
+        return { success: false, message: 'Invalid or expired OTP' };
+      }
+
+      // Hash new password
+      const saltRounds = 12;
+      const newPasswordHash = bcrypt.hashSync(newPassword, saltRounds);
+
+      // Update password
+      run('UPDATE users SET password_hash = ? WHERE id = ?', 
+        [newPasswordHash, user.id]);
+
+      // Remove used OTP
+      run('DELETE FROM password_change_otps WHERE user_id = ?', [user.id]);
+
+      return { success: true, message: 'Password changed successfully' };
+    } catch (error) {
+      console.error('Password change error:', error);
+      return { success: false, message: 'Failed to change password' };
+    }
+  });
+
   // ===================
   // MEMBERS MANAGEMENT
   // ===================

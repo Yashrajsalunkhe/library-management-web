@@ -165,6 +165,18 @@ const createTables = () => {
     )
   `).run();
 
+  // Password change OTPs table
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS password_change_otps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      otp TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+  `).run();
+
   // Migrate existing members table to add new columns
   try {
     // Check if new columns exist, if not add them

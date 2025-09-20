@@ -43,10 +43,30 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('library_user');
   };
 
+  const requestPasswordChangeOTP = async (data) => {
+    try {
+      const result = await window.api.auth.requestPasswordChangeOTP(data);
+      return result;
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  };
+
+  const changePassword = async (data) => {
+    try {
+      const result = await window.api.auth.changePassword(data);
+      return result;
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  };
+
   const value = {
     user,
     login,
     logout,
+    requestPasswordChangeOTP,
+    changePassword,
     loading,
     isAuthenticated: !!user
   };

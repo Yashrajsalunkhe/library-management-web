@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../contexts/NotificationContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const Settings = () => {
   const { success, error } = useNotification();
+  const { requestPasswordChangeOTP, changePassword, user } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState({
     // General Settings - Enhanced with Study Room Information
@@ -103,6 +105,19 @@ const Settings = () => {
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [newHoliday, setNewHoliday] = useState({ date: '', name: '' });
+
+  // Password change state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordChangeStep, setPasswordChangeStep] = useState(1); // 1: enter passwords, 2: verify OTP
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    otp: ''
+  });
+  const [otpSent, setOtpSent] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [otpExpiryTime, setOtpExpiryTime] = useState(null);
 
   // Time format conversion helpers
   const convertTo12Hour = (time24) => {
@@ -1536,69 +1551,69 @@ const Settings = () => {
   const renderSecuritySettings = () => (
     <div className="settings-section">
       <h3>Security Configuration</h3>
-      <div className="form-grid">
-        <div className="form-group">
-          <label>Session Timeout (minutes)</label>
-          <input
-            type="number"
-            value={settings.security.sessionTimeout}
-            onChange={(e) => handleSettingChange('security', 'sessionTimeout', e.target.value)}
-            className="form-control"
-            min="5"
-            max="480"
-          />
+      
+      {/* Password Management Section */}
+      <div className="security-subsection">
+        <h4>Password Management</h4>
+        <div className="action-buttons">
+          <button 
+            onClick={() => setShowPasswordModal(true)}
+            className="button button-primary"
+          >
+            🔒 Change Password
+          </button>
         </div>
-        <div className="form-group">
-          <label className="checkbox-label">
+        <small className="form-help">
+          Change your password with email verification for enhanced security
+        </small>
+      </div>
+
+      {/* Session & Access Control */}
+      <div className="security-subsection">
+        <h4>Session & Access Control</h4>
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Session Timeout (minutes)</label>
             <input
-              type="checkbox"
-              checked={settings.security.requirePasswordChange}
-              onChange={(e) => handleSettingChange('security', 'requirePasswordChange', e.target.checked)}
+              type="number"
+              value={settings.security.sessionTimeout}
+              onChange={(e) => handleSettingChange('security', 'sessionTimeout', e.target.value)}
+              className="form-control"
+              min="5"
+              max="480"
             />
-            Require Periodic Password Change
-          </label>
+            <small className="form-help">Automatically logout after inactivity</small>
+          </div>
+          
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={settings.security.logUserActions}
+                onChange={(e) => handleSettingChange('security', 'logUserActions', e.target.checked)}
+              />
+              Log User Actions
+            </label>
+            <small className="form-help">Keep track of all user activities for audit purposes</small>
+          </div>
         </div>
-        <div className="form-group">
-          <label>Password Change Interval (days)</label>
-          <input
-            type="number"
-            value={settings.security.passwordChangeInterval}
-            onChange={(e) => handleSettingChange('security', 'passwordChangeInterval', e.target.value)}
-            className="form-control"
-            min="30"
-            max="365"
-            disabled={!settings.security.requirePasswordChange}
-          />
-        </div>
-        <div className="form-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={settings.security.enableBiometric}
-              onChange={(e) => handleSettingChange('security', 'enableBiometric', e.target.checked)}
-            />
-            Enable Biometric Authentication
-          </label>
-        </div>
-        <div className="form-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={settings.security.twoFactorAuth}
-              onChange={(e) => handleSettingChange('security', 'twoFactorAuth', e.target.checked)}
-            />
-            Enable Two-Factor Authentication
-          </label>
-        </div>
-        <div className="form-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={settings.security.logUserActions}
-              onChange={(e) => handleSettingChange('security', 'logUserActions', e.target.checked)}
-            />
-            Log User Actions
-          </label>
+      </div>
+
+      {/* Authentication Options */}
+      <div className="security-subsection">
+        <h4>Advanced Authentication</h4>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={settings.security.enableBiometric}
+                onChange={(e) => handleSettingChange('security', 'enableBiometric', e.target.checked)}
+              />
+              Enable Biometric Authentication
+            </label>
+            <small className="form-help">Use fingerprint scanner for member check-in/out</small>
+          </div>
         </div>
       </div>
     </div>
@@ -1734,6 +1749,237 @@ const Settings = () => {
     }
   };
 
+  // Password change helper functions
+  const validatePassword = (password) => {
+    const errors = [];
+    if (password.length < 8) errors.push('Password must be at least 8 characters long');
+    if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter');
+    if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter');
+    if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) errors.push('Password must contain at least one special character');
+    return errors;
+  };
+
+  const handlePasswordFormChange = (field, value) => {
+    setPasswordForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const resetPasswordModal = () => {
+    setShowPasswordModal(false);
+    setPasswordChangeStep(1);
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+      otp: ''
+    });
+    setOtpSent(false);
+    setPasswordLoading(false);
+    setOtpExpiryTime(null);
+  };
+
+  const handlePasswordChangeRequest = async () => {
+    try {
+      // Validate current form
+      if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+        error('All fields are required');
+        return;
+      }
+
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        error('New passwords do not match');
+        return;
+      }
+
+      const passwordErrors = validatePassword(passwordForm.newPassword);
+      if (passwordErrors.length > 0) {
+        error(passwordErrors.join(', '));
+        return;
+      }
+
+      setPasswordLoading(true);
+
+      // Request OTP from backend
+      const result = await requestPasswordChangeOTP({
+        currentPassword: passwordForm.currentPassword,
+        userId: user?.id
+      });
+
+      if (result.success) {
+        setOtpSent(true);
+        setPasswordChangeStep(2);
+        setOtpExpiryTime(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+        success('OTP sent to your registered email address');
+      } else {
+        error(result.message || 'Failed to send OTP');
+      }
+    } catch (err) {
+      error('Failed to process password change request');
+      console.error(err);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handlePasswordChangeComplete = async () => {
+    try {
+      if (!passwordForm.otp) {
+        error('Please enter the OTP');
+        return;
+      }
+
+      setPasswordLoading(true);
+
+      const result = await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+        otp: passwordForm.otp,
+        userId: user?.id
+      });
+
+      if (result.success) {
+        success('Password changed successfully');
+        resetPasswordModal();
+      } else {
+        error(result.message || 'Failed to change password');
+      }
+    } catch (err) {
+      error('Failed to change password');
+      console.error(err);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const renderPasswordChangeModal = () => {
+    if (!showPasswordModal) return null;
+
+    return (
+      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && resetPasswordModal()}>
+        <div className="modal-content password-change-modal">
+          <div className="modal-header">
+            <h3>🔒 Change Password</h3>
+            <button className="modal-close" onClick={resetPasswordModal}>×</button>
+          </div>
+
+          <div className="modal-body">
+            {passwordChangeStep === 1 ? (
+              <>
+                <div className="form-group">
+                  <label>Current Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => handlePasswordFormChange('currentPassword', e.target.value)}
+                    className="form-control"
+                    placeholder="Enter your current password"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>New Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => handlePasswordFormChange('newPassword', e.target.value)}
+                    className="form-control"
+                    placeholder="Enter new password"
+                  />
+                  <div className="password-requirements">
+                    <small>Password must contain:</small>
+                    <ul>
+                      <li className={passwordForm.newPassword.length >= 8 ? 'valid' : ''}>At least 8 characters</li>
+                      <li className={/[A-Z]/.test(passwordForm.newPassword) ? 'valid' : ''}>One uppercase letter</li>
+                      <li className={/[a-z]/.test(passwordForm.newPassword) ? 'valid' : ''}>One lowercase letter</li>
+                      <li className={/[0-9]/.test(passwordForm.newPassword) ? 'valid' : ''}>One number</li>
+                      <li className={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(passwordForm.newPassword) ? 'valid' : ''}>One special character</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => handlePasswordFormChange('confirmPassword', e.target.value)}
+                    className="form-control"
+                    placeholder="Confirm new password"
+                  />
+                  {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
+                    <small className="error-text">Passwords do not match</small>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="otp-verification">
+                  <p>An OTP has been sent to your registered email address. Please enter it below to complete the password change.</p>
+                  
+                  <div className="form-group">
+                    <label>Enter OTP</label>
+                    <input
+                      type="text"
+                      value={passwordForm.otp}
+                      onChange={(e) => handlePasswordFormChange('otp', e.target.value)}
+                      className="form-control"
+                      placeholder="Enter 6-digit OTP"
+                      maxLength="6"
+                    />
+                  </div>
+
+                  {otpExpiryTime && (
+                    <div className="otp-timer">
+                      <small>OTP expires in: {Math.max(0, Math.ceil((otpExpiryTime - Date.now()) / 60000))} minutes</small>
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={handlePasswordChangeRequest}
+                    className="button button-link"
+                    disabled={passwordLoading}
+                  >
+                    Resend OTP
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="modal-footer">
+            <button 
+              onClick={resetPasswordModal}
+              className="button button-secondary"
+              disabled={passwordLoading}
+            >
+              Cancel
+            </button>
+            {passwordChangeStep === 1 ? (
+              <button 
+                onClick={handlePasswordChangeRequest}
+                className="button button-primary"
+                disabled={passwordLoading}
+              >
+                {passwordLoading ? 'Sending OTP...' : 'Send OTP'}
+              </button>
+            ) : (
+              <button 
+                onClick={handlePasswordChangeComplete}
+                className="button button-primary"
+                disabled={passwordLoading}
+              >
+                {passwordLoading ? 'Changing Password...' : 'Change Password'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="settings-container">
       <div className="settings-header">
@@ -1786,6 +2032,9 @@ const Settings = () => {
           </div>
         </div>
       )}
+
+      {/* Password Change Modal */}
+      {renderPasswordChangeModal()}
     </div>
   );
 };

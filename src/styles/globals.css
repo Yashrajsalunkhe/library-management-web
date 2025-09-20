@@ -2890,3 +2890,171 @@ select.form-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* Password Change Modal Styles */
+.password-change-modal {
+  max-width: 500px;
+  width: 90%;
+}
+
+.password-change-modal .modal-body {
+  padding: 2rem;
+}
+
+.password-requirements {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  background: #f7fafc;
+  border-radius: 6px;
+  border-left: 4px solid #3182ce;
+}
+
+.password-requirements small {
+  color: #4a5568;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.password-requirements ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.password-requirements li {
+  padding: 0.25rem 0;
+  color: #e53e3e;
+  font-size: 0.875rem;
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.password-requirements li:before {
+  content: "✗";
+  position: absolute;
+  left: 0;
+  color: #e53e3e;
+  font-weight: bold;
+}
+
+.password-requirements li.valid {
+  color: #38a169;
+}
+
+.password-requirements li.valid:before {
+  content: "✓";
+  color: #38a169;
+}
+
+.otp-verification {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.otp-verification p {
+  margin-bottom: 1.5rem;
+  color: #4a5568;
+  line-height: 1.6;
+}
+
+.otp-timer {
+  margin: 1rem 0;
+}
+
+.otp-timer small {
+  color: #e53e3e;
+  font-weight: 600;
+}
+
+.error-text {
+  color: #e53e3e;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Security Settings Styles */
+.security-subsection {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f7fafc;
+  border-radius: 8px;
+  border-left: 4px solid #3182ce;
+}
+
+.security-subsection h4 {
+  color: #2d3748;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.security-subsection .form-help {
+  color: #718096;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.security-subsection .action-buttons {
+  margin-bottom: 1rem;
+}
+
+.security-subsection .action-buttons .button {
+  margin-right: 0.5rem;
+}
+
+/* Modal Content Updates */
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: none;
+}
+
+.modal-header {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1.5rem 2rem;
+}
+
+.modal-header h3 {
+  color: #2d3748;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modal-footer {
+  border-top: 1px solid #e2e8f0;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Responsive Password Modal */
+@media (max-width: 768px) {
+  .password-change-modal {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .password-change-modal .modal-body {
+    padding: 1.5rem;
+  }
+  
+  .modal-header,
+  .modal-footer {
+    padding: 1rem 1.5rem;
+  }
+  
+  .password-requirements {
+    padding: 0.75rem;
+  }
+  
+  .security-subsection {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+}
