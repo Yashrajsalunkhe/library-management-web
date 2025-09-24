@@ -5,6 +5,7 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [backupLoading, setBackupLoading] = useState(false);
   const { error, success } = useNotification();
 
   useEffect(() => {
@@ -47,15 +48,23 @@ const Dashboard = () => {
   };
 
   const createBackup = async () => {
+    setBackupLoading(true);
     try {
-      const result = await window.api.scheduler.backup();
-      if (result.success) {
-        success('Database backup created successfully');
+      if (window.api?.backup?.createBackup) {
+        const result = await window.api.backup.createBackup();
+        if (result.success) {
+          success(`Database backup created successfully! Saved as: ${result.timestamp}`);
+        } else {
+          error(result.message || 'Failed to create backup');
+        }
       } else {
-        error(result.error || 'Failed to create backup');
+        error('Backup functionality not available');
       }
     } catch (err) {
-      error('Failed to create backup');
+      console.error('Backup error:', err);
+      error('Failed to create backup: ' + (err.message || 'Unknown error'));
+    } finally {
+      setBackupLoading(false);
     }
   };
 
@@ -232,10 +241,22 @@ const Dashboard = () => {
               onClick={createBackup}
               className="button button-secondary"
               style={{ justifyContent: 'flex-start' }}
+              disabled={backupLoading}
             >
-              <span style={{ marginRight: '0.5rem' }}>💾</span>
-              Create Database Backup
+              <span style={{ marginRight: '0.5rem' }}>
+                {backupLoading ? '⏳' : '💾'}
+              </span>
+              {backupLoading ? 'Creating Backup...' : 'Create Database Backup'}
             </button>
+
+            <p style={{ 
+              fontSize: '0.75rem', 
+              color: '#718096', 
+              marginTop: '0.5rem',
+              marginBottom: '1rem'
+            }}>
+              💡 For more backup options (restore, auto-backup, etc.), visit Settings → Backup & Data
+            </p>
 
             <div style={{ 
               padding: '1rem', 
