@@ -2328,6 +2328,220 @@ Library Management Team
   // ===================
   // APP MANAGEMENT
   // ===================
+  // BIOMETRIC OPERATIONS
+  // ===================
+  
+  ipcMain.handle('biometric:get-status', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const status = biometricBridge.getStatus();
+      return { success: true, data: status };
+    } catch (error) {
+      console.error('Biometric status check error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:start-scanning', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.startScanning();
+      return result;
+    } catch (error) {
+      console.error('Start biometric scanning error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:stop-scanning', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.stopScanning();
+      return result;
+    } catch (error) {
+      console.error('Stop biometric scanning error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:enroll-fingerprint', async (event, memberId) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.enrollFingerprint(memberId);
+      return result;
+    } catch (error) {
+      console.error('Enroll fingerprint error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:delete-fingerprint', async (event, memberId) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.deleteFingerprint(memberId);
+      return result;
+    } catch (error) {
+      console.error('Delete fingerprint error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:get-device-info', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.getDeviceInfo();
+      return result;
+    } catch (error) {
+      console.error('Get device info error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:test-connection', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.testConnection();
+      return result;
+    } catch (error) {
+      console.error('Test biometric connection error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:get-connection-status', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const status = biometricBridge.getConnectionStatus();
+      return { success: true, data: status };
+    } catch (error) {
+      console.error('Get biometric connection status error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:get-users', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.getUsers();
+      return result;
+    } catch (error) {
+      console.error('Get biometric users error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:get-all-attendance', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.getAllAttendance();
+      return result;
+    } catch (error) {
+      console.error('Get all attendance error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:clear-logs', async (event) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.clearAttendanceLogs();
+      return result;
+    } catch (error) {
+      console.error('Clear attendance logs error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:set-user', async (event, { userId, name, cardNumber, password, role }) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.setUser(userId, name, cardNumber, password, role);
+      return result;
+    } catch (error) {
+      console.error('Set user error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('biometric:delete-user', async (event, userId) => {
+    try {
+      const { getBiometricBridge } = require('./main');
+      const biometricBridge = getBiometricBridge();
+      if (!biometricBridge) {
+        return { success: false, message: 'Biometric bridge not initialized' };
+      }
+      
+      const result = await biometricBridge.deleteUser(userId);
+      return result;
+    } catch (error) {
+      console.error('Delete user error:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
+  // APP MANAGEMENT
+  // ===================
   
   ipcMain.handle('app:restart', async (event) => {
     try {

@@ -8,6 +8,8 @@ class BiometricBridge {
     this.helperToken = process.env.BIOMETRIC_HELPER_TOKEN || 'default-token';
     this.server = null;
     this.eventCallbacks = [];
+    this.connectionStatus = { connected: false, lastCheck: null };
+    this.connectionCheckInterval = null;
   }
 
   // Start HTTP server to receive events from biometric helper
@@ -98,7 +100,7 @@ class BiometricBridge {
   // Check if biometric helper is running
   async checkHelperStatus() {
     try {
-      const response = await axios.get(`${this.helperUrl}/status`, {
+      const response = await axios.get(`${this.helperUrl}/api/biometric/status`, {
         timeout: 5000,
         headers: {
           'Authorization': `Bearer ${this.helperToken}`
@@ -106,17 +108,27 @@ class BiometricBridge {
       });
       return { success: true, data: response.data };
     } catch (error) {
+      let errorMessage = error.message;
+      if (error.code === 'ECONNREFUSED') {
+        errorMessage = 'Biometric helper service is not running. Please start the helper application.';
+      } else if (error.code === 'ENOTFOUND') {
+        errorMessage = 'Cannot resolve biometric helper address. Check network configuration.';
+      } else if (error.code === 'ETIMEDOUT') {
+        errorMessage = 'Connection to biometric helper timed out. Device may be disconnected.';
+      }
+      
       return { 
         success: false, 
-        error: error.code === 'ECONNREFUSED' ? 'Helper not running' : error.message 
+        error: errorMessage,
+        code: error.code
       };
     }
   }
 
-  // Start biometric scanning
+  // Start fingerprint scanning
   async startScanning() {
     try {
-      const response = await axios.post(`${this.helperUrl}/start-scan`, {}, {
+      const response = await axios.post(`${this.helperUrl}/api/biometric/start-scan`, {}, {
         headers: {
           'Authorization': `Bearer ${this.helperToken}`
         }
@@ -130,7 +142,7 @@ class BiometricBridge {
   // Stop biometric scanning
   async stopScanning() {
     try {
-      const response = await axios.post(`${this.helperUrl}/stop-scan`, {}, {
+      const response = await axios.post(`${this.helperUrl}/api/biometric/stop-scan`, {}, {
         headers: {
           'Authorization': `Bearer ${this.helperToken}`
         }
@@ -144,7 +156,7 @@ class BiometricBridge {
   // Enroll new fingerprint
   async enrollFingerprint(memberId) {
     try {
-      const response = await axios.post(`${this.helperUrl}/enroll`, {
+      const response = await axios.post(`${this.helperUrl}/api/biometric/enroll`, {
         memberId: memberId
       }, {
         headers: {
@@ -160,7 +172,7 @@ class BiometricBridge {
   // Delete fingerprint template
   async deleteFingerprint(memberId) {
     try {
-      const response = await axios.delete(`${this.helperUrl}/fingerprint/${memberId}`, {
+      const response = await axios.delete(`${this.helperUrl}/api/biometric/fingerprint/${memberId}`, {
         headers: {
           'Authorization': `Bearer ${this.helperToken}`
         }
@@ -174,7 +186,7 @@ class BiometricBridge {
   // Get device information
   async getDeviceInfo() {
     try {
-      const response = await axios.get(`${this.helperUrl}/device-info`, {
+      const response = await axios.get(`${this.helperUrl}/api/biometric/device-info`, {
         headers: {
           'Authorization': `Bearer ${this.helperToken}`
         }
@@ -187,30 +199,84 @@ class BiometricBridge {
 
   // Test connection to helper
   async testConnection() {
+    console.log('Testing biometric connection...');
+    
     const status = await this.checkHelperStatus();
     if (!status.success) {
       return {
         success: false,
-        message: 'Cannot connect to biometric helper. Please ensure the helper application is running.',
-        details: status.error
+        message: 'Cannot connect to biometric helper service.',
+        details: status.error,
+        code: status.code
       };
     }
 
     try {
       const deviceInfo = await this.getDeviceInfo();
+      if (!deviceInfo.success) {
+        return {
+          success: false,
+          message: 'Connected to helper but biometric device is not ready.',
+          details: deviceInfo.error
+        };
+      }
+
       return {
         success: true,
-        message: 'Successfully connected to biometric helper',
+        message: 'Biometric system is ready and device connected successfully.',
         helperStatus: status.data,
         deviceInfo: deviceInfo.data
       };
     } catch (error) {
       return {
         success: false,
-        message: 'Connected to helper but device may not be ready',
+        message: 'Error checking device status.',
         error: error.message
       };
     }
+  }
+
+  // Start periodic connection monitoring
+  startConnectionMonitoring(interval = 30000) {
+    if (this.connectionCheckInterval) {
+      clearInterval(this.connectionCheckInterval);
+    }
+
+    this.connectionCheckInterval = setInterval(async () => {
+      const status = await this.checkHelperStatus();
+      this.connectionStatus.connected = status.success;
+      this.connectionStatus.lastCheck = new Date();
+      
+      // Notify all callbacks about connection status change
+      this.eventCallbacks.forEach(callback => {
+        try {
+          callback({
+            EventType: 'connection_status',
+            Connected: status.success,
+            LastCheck: this.connectionStatus.lastCheck,
+            Error: status.success ? null : status.error
+          });
+        } catch (error) {
+          console.error('Error in connection status callback:', error);
+        }
+      });
+    }, interval);
+
+    console.log(`Started biometric connection monitoring (interval: ${interval}ms)`);
+  }
+
+  // Stop connection monitoring
+  stopConnectionMonitoring() {
+    if (this.connectionCheckInterval) {
+      clearInterval(this.connectionCheckInterval);
+      this.connectionCheckInterval = null;
+      console.log('Stopped biometric connection monitoring');
+    }
+  }
+
+  // Get current connection status
+  getConnectionStatus() {
+    return this.connectionStatus;
   }
 }
 

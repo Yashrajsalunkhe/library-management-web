@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../contexts/NotificationContext';
+import BiometricEnrollment from '../components/BiometricEnrollment';
 
 const Members = ({ initialAction = null }) => {
   const [members, setMembers] = useState([]);
@@ -10,6 +11,7 @@ const Members = ({ initialAction = null }) => {
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
@@ -294,6 +296,21 @@ const Members = ({ initialAction = null }) => {
                         <button
                           onClick={() => {
                             setSelectedMember(member);
+                            setShowBiometricModal(true);
+                          }}
+                          className="button button-info button-sm"
+                          title="Manage Biometric"
+                          style={{ 
+                            padding: '4px 8px',
+                            fontSize: '12px',
+                            backgroundColor: '#3b82f6'
+                          }}
+                        >
+                          🔓
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedMember(member);
                             setShowDetailsModal(true);
                           }}
                           className="button button-secondary button-sm"
@@ -416,6 +433,25 @@ const Members = ({ initialAction = null }) => {
           onSubmit={handleEditMember}
           onClose={() => {
             setShowEditModal(false);
+            setSelectedMember(null);
+          }}
+        />
+      )}
+
+      {/* Biometric Enrollment Modal */}
+      {showBiometricModal && selectedMember && (
+        <BiometricEnrollment
+          member={selectedMember}
+          onSuccess={(result) => {
+            if (result.deleted) {
+              success(`Biometric data deleted for ${selectedMember.name}`);
+            } else {
+              success(`Biometric enrollment completed for ${selectedMember.name}`);
+            }
+            loadMembers(); // Refresh the member list if needed
+          }}
+          onClose={() => {
+            setShowBiometricModal(false);
             setSelectedMember(null);
           }}
         />

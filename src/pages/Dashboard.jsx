@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../contexts/NotificationContext';
+import BiometricStatus from '../components/BiometricStatus';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -169,7 +170,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {/* Recent Attendance */}
         <div className="card">
           <div className="card-header">
@@ -220,6 +221,9 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Biometric Status */}
+        <BiometricStatus className="col-span-1" />
 
         {/* Quick Actions */}
         <div className="card">

@@ -124,6 +124,55 @@ contextBridge.exposeInMainWorld('api', {
     exportData: () => ipcRenderer.invoke('data:exportData')
   },
 
+  // Biometric
+  biometric: {
+    getStatus: () => ipcRenderer.invoke('biometric:get-status'),
+    startScanning: () => ipcRenderer.invoke('biometric:start-scanning'),
+    stopScanning: () => ipcRenderer.invoke('biometric:stop-scanning'),
+    enrollFingerprint: (memberId) => ipcRenderer.invoke('biometric:enroll-fingerprint', memberId),
+    deleteFingerprint: (memberId) => ipcRenderer.invoke('biometric:delete-fingerprint', memberId),
+    getDeviceInfo: () => ipcRenderer.invoke('biometric:get-device-info'),
+    testConnection: () => ipcRenderer.invoke('biometric:test-connection'),
+    getConnectionStatus: () => ipcRenderer.invoke('biometric:get-connection-status'),
+    
+    // Event listeners for real-time updates
+    onEvent: (callback) => {
+      const wrappedCallback = (event, data) => callback(data);
+      ipcRenderer.on('biometric-event', wrappedCallback);
+      return () => ipcRenderer.removeListener('biometric-event', wrappedCallback);
+    },
+    
+    onAttendanceRecorded: (callback) => {
+      const wrappedCallback = (event, data) => callback(data);
+      ipcRenderer.on('attendance-recorded', wrappedCallback);
+      return () => ipcRenderer.removeListener('attendance-recorded', wrappedCallback);
+    },
+
+    onConnectionStatus: (callback) => {
+      const wrappedCallback = (event, data) => callback(data);
+      ipcRenderer.on('biometric-connection-status', wrappedCallback);
+      return () => ipcRenderer.removeListener('biometric-connection-status', wrappedCallback);
+    },
+
+    onAccessDenied: (callback) => {
+      const wrappedCallback = (event, data) => callback(data);
+      ipcRenderer.on('biometric-access-denied', wrappedCallback);
+      return () => ipcRenderer.removeListener('biometric-access-denied', wrappedCallback);
+    },
+
+    onError: (callback) => {
+      const wrappedCallback = (event, data) => callback(data);
+      ipcRenderer.on('biometric-error', wrappedCallback);
+      return () => ipcRenderer.removeListener('biometric-error', wrappedCallback);
+    },
+
+    onInfo: (callback) => {
+      const wrappedCallback = (event, data) => callback(data);
+      ipcRenderer.on('biometric-info', wrappedCallback);
+      return () => ipcRenderer.removeListener('biometric-info', wrappedCallback);
+    }
+  },
+
   // App
   app: {
     restart: () => ipcRenderer.invoke('app:restart')
