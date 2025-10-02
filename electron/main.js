@@ -605,8 +605,8 @@ app.on('before-quit', () => {
   }
   
   if (biometricBridge) {
-    biometricBridge.stopEventServer();
-    biometricBridge.stopConnectionMonitoring();
+    // Use disconnect method instead of non-existent stopEventServer
+    biometricBridge.disconnect();
     console.log('Biometric bridge cleaned up');
   }
 });

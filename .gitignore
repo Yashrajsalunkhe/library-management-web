@@ -64,6 +64,15 @@ Thumbs.db
 *.orig
 .electron-builder.env
 
-# Reports and exports (optional - uncomment if you don't want to track exports)
+# Reports and exports
 exports/
-# reports/
+reports/
+backups/
+
+# Test and utility files (keep in repository but ignore generated outputs)
+tests/outputs/
+tests/logs/
+
+# SQLite WAL and SHM files should always be ignored
+*.db-shm
+*.db-wal

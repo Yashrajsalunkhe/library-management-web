@@ -46,15 +46,22 @@ const Layout = ({ children, currentPage, onPageChange }) => {
   }, [onPageChange]);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar */}
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {/* Sidebar - Fixed position */}
       <aside
         style={{
           width: sidebarOpen ? '250px' : '70px',
           backgroundColor: '#2d3748',
           color: 'white',
           transition: 'width 0.3s ease',
-          flexShrink: 0
+          flexShrink: 0,
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          zIndex: 1000,
+          overflowY: 'auto',
+          overflowX: 'hidden'
         }}
       >
         <div style={{ padding: '1rem' }}>
@@ -105,7 +112,8 @@ const Layout = ({ children, currentPage, onPageChange }) => {
           position: 'absolute', 
           bottom: '1rem', 
           left: '1rem', 
-          right: '1rem' 
+          right: sidebarOpen ? '1rem' : '0.5rem',
+          width: sidebarOpen ? 'calc(100% - 2rem)' : 'calc(100% - 1rem)'
         }}>
           {sidebarOpen && (
             <div style={{ 
@@ -119,10 +127,11 @@ const Layout = ({ children, currentPage, onPageChange }) => {
           <button
             onClick={logout}
             style={{
-              width: '12%',
+              width: '100%',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.75rem',
+              justifyContent: sidebarOpen ? 'flex-start' : 'center',
+              gap: sidebarOpen ? '0.75rem' : '0',
               padding: '0.75rem',
               backgroundColor: '#e53e3e',
               color: 'white',
@@ -138,9 +147,17 @@ const Layout = ({ children, currentPage, onPageChange }) => {
         </div>
       </aside>
 
-      {/* Main content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
+      {/* Main content - Offset by sidebar width */}
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        marginLeft: sidebarOpen ? '250px' : '70px',
+        transition: 'margin-left 0.3s ease',
+        height: '100vh',
+        overflow: 'hidden'
+      }}>
+        {/* Header - Fixed at top */}
         <header style={{
           backgroundColor: 'white',
           borderBottom: '1px solid #e2e8f0',
@@ -148,7 +165,11 @@ const Layout = ({ children, currentPage, onPageChange }) => {
           height: '60px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          zIndex: 100
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button
@@ -194,12 +215,13 @@ const Layout = ({ children, currentPage, onPageChange }) => {
           </div>
         </header>
 
-        {/* Page content */}
+        {/* Page content - Scrollable area */}
         <main style={{ 
           flex: 1, 
           padding: '1.5rem', 
           overflow: 'auto',
-          backgroundColor: '#f7fafc' 
+          backgroundColor: '#f7fafc',
+          height: 'calc(100vh - 60px)'
         }}>
           {children}
         </main>

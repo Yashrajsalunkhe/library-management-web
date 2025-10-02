@@ -22,12 +22,20 @@ const AppContent = () => {
 
   // Check if Electron API is available
   useEffect(() => {
+    let attempts = 0;
+    const maxAttempts = 50; // Reduce max attempts from infinite to 50 (5 seconds)
+    
     const checkApi = () => {
+      attempts++;
       if (typeof window !== 'undefined' && window.api) {
         setApiReady(true);
         console.log('Electron API is ready');
+      } else if (attempts >= maxAttempts) {
+        // If API not available after 5 seconds, continue anyway (might be running in browser)
+        console.warn('Electron API not found after 5 seconds, continuing without it');
+        setApiReady(true);
       } else {
-        console.log('Electron API not ready, retrying...');
+        console.log(`Checking for Electron API (${attempts}/${maxAttempts})...`);
         setTimeout(checkApi, 100);
       }
     };
@@ -48,10 +56,29 @@ const AppContent = () => {
         justifyContent: 'center',
         minHeight: '100vh',
         flexDirection: 'column',
-        gap: '1rem'
+        gap: '1rem',
+        backgroundColor: '#f5f7fa'
       }}>
-        <div className="loading-spinner" />
-        <p>Loading Electron API...</p>
+        <div style={{
+          padding: '2rem',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center',
+          maxWidth: '300px'
+        }}>
+          <div className="loading-spinner" style={{ 
+            width: '40px', 
+            height: '40px',
+            margin: '0 auto 1rem auto'
+          }} />
+          <h3 style={{ margin: '0 0 0.5rem 0', color: '#2d3748' }}>
+            Library Management System
+          </h3>
+          <p style={{ color: '#718096', fontSize: '0.875rem' }}>
+            Initializing application...
+          </p>
+        </div>
       </div>
     );
   }
