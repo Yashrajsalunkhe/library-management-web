@@ -1,7 +1,7 @@
 const ZKLib = require('node-zklib');
 require('dotenv').config();
 
-const deviceIP = process.env.BIOMETRIC_DEVICE_IP || '172.16.253.65';
+const deviceIP = process.env.BIOMETRIC_DEVICE_IP || '172.16.85.85';
 const port = parseInt(process.env.BIOMETRIC_DEVICE_PORT || '4370');
 
 console.log(`Testing connection to ${deviceIP}:${port}...`);

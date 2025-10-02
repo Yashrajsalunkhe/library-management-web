@@ -7,7 +7,7 @@ class BiometricZKLibService extends EventEmitter {
         super();
         
         // Configuration from environment or defaults
-        this.deviceIP = process.env.BIOMETRIC_DEVICE_IP || '172.16.253.65';
+        this.deviceIP = process.env.BIOMETRIC_DEVICE_IP || '172.16.85.85';
         this.port = parseInt(process.env.BIOMETRIC_DEVICE_PORT || '4370');
         this.timeout = parseInt(process.env.BIOMETRIC_TIMEOUT || '5000');
         this.internalTimeout = parseInt(process.env.BIOMETRIC_INTERNAL_TIMEOUT || '10000');

@@ -280,12 +280,18 @@ module.exports = (ipcMain) => {
 
   ipcMain.handle('member:getNextSeatNumber', async (event) => {
     try {
-      // Get total seats from settings
+      // Get total seats from settings - use the raw value as stored
       const totalSeatsRecord = get('SELECT value FROM settings WHERE key = ?', ['general.totalSeats']);
-      const totalSeats = totalSeatsRecord ? parseInt(totalSeatsRecord.value) : 50; // Default to 50 if not set
+      console.log('Total seats record from DB (raw value):', totalSeatsRecord ? totalSeatsRecord.value : 'null', 
+                  'Type:', totalSeatsRecord ? typeof totalSeatsRecord.value : 'N/A');
+                  
+      // Parse to integer, using the exact string value
+      const totalSeatsStr = totalSeatsRecord ? totalSeatsRecord.value : '50'; // Default to '50' if not set
+      const totalSeats = parseInt(totalSeatsStr, 10);
+      console.log('Using total seats value:', totalSeatsStr, '→', totalSeats);
       
       const existingSeats = query('SELECT seat_no FROM members WHERE seat_no IS NOT NULL ORDER BY CAST(seat_no AS INTEGER)');
-      const seatNumbers = existingSeats.map(s => parseInt(s.seat_no)).filter(n => !isNaN(n));
+      const seatNumbers = existingSeats.map(s => parseInt(s.seat_no, 10)).filter(n => !isNaN(n));
       
       let nextSeat = 1;
       for (let i = 0; i < seatNumbers.length; i++) {
@@ -1607,6 +1613,14 @@ Library Management Team
           settingsObj[category] = {};
         }
         
+        // Special handling for totalSeats - keep the exact raw value from DB
+        if (category === 'general' && key === 'totalSeats') {
+          console.log('Retrieved totalSeats from DB (raw value):', setting.value, 'Type:', typeof setting.value);
+          // Use the exact value as stored in the database without any conversion
+          settingsObj[category][key] = setting.value;
+          return; // Skip the regular processing below
+        }
+        
         // Parse JSON values or use string values
         try {
           settingsObj[category][key] = JSON.parse(setting.value);
@@ -1614,6 +1628,12 @@ Library Management Team
           settingsObj[category][key] = setting.value;
         }
       });
+      
+      // Log the total seats value we're returning
+      if (settingsObj.general && settingsObj.general.totalSeats !== undefined) {
+        console.log('Returning totalSeats to frontend:', settingsObj.general.totalSeats, 
+                    'Type:', typeof settingsObj.general.totalSeats);
+      }
       
       return { success: true, settings: settingsObj };
     } catch (error) {
@@ -1624,6 +1644,15 @@ Library Management Team
 
   ipcMain.handle('settings:saveSettings', async (event, settings) => {
     try {
+      // Log the incoming totalSeats value for debugging
+      if (settings.general && settings.general.totalSeats !== undefined) {
+        console.log('Saving totalSeats (raw value):', settings.general.totalSeats, 
+                    'Type:', typeof settings.general.totalSeats);
+        
+        // IMPORTANT: Do not convert or modify the totalSeats value at all
+        // Keep exactly what was sent from the frontend
+      }
+      
       transaction(() => {
         // Clear existing settings
         run('DELETE FROM settings');
@@ -1635,6 +1664,11 @@ Library Management Team
             const value = typeof settings[category][key] === 'object' 
               ? JSON.stringify(settings[category][key])
               : settings[category][key].toString();
+            
+            // Log when saving totalSeats
+            if (category === 'general' && key === 'totalSeats') {
+              console.log('Inserting totalSeats into DB:', value, 'Type:', typeof value);
+            }
             
             run('INSERT INTO settings (key, value) VALUES (?, ?)', [settingKey, value]);
           });

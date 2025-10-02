@@ -22,7 +22,7 @@ The new implementation:
 ### 1. Device Configuration
 
 Configure your biometric device with the following network settings:
-- **IP Address**: Set a static IP (e.g., `172.16.253.65`)
+- **IP Address**: Set a static IP (e.g., `172.16.85.85`)
 - **Port**: Default is `4370` (usually doesn't need changing)
 - **Network**: Ensure both device and computer are on the same network
 
@@ -41,7 +41,7 @@ nano .env
 Configure the biometric settings:
 ```bash
 # Biometric Device Configuration (node-zklib)
-BIOMETRIC_DEVICE_IP=172.16.253.65
+BIOMETRIC_DEVICE_IP=172.16.85.85
 BIOMETRIC_DEVICE_PORT=4370
 BIOMETRIC_TIMEOUT=5000
 BIOMETRIC_INTERNAL_TIMEOUT=10000
@@ -146,7 +146,7 @@ The script will:
 
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
-| `BIOMETRIC_DEVICE_IP` | `172.16.253.65` | Device IP address |
+| `BIOMETRIC_DEVICE_IP` | `172.16.85.85` | Device IP address |
 | `BIOMETRIC_DEVICE_PORT` | `4370` | Device TCP port |
 | `BIOMETRIC_TIMEOUT` | `5000` | Connection timeout (ms) |
 | `BIOMETRIC_INTERNAL_TIMEOUT` | `10000` | Internal operations timeout (ms) |
@@ -191,10 +191,10 @@ The system emits these events:
 
 1. **Connection Refused**
    ```
-   Error: connect ECONNREFUSED 172.16.253.65:4370
+   Error: connect ECONNREFUSED 172.16.85.85:4370
    ```
    - Check device IP address
-   - Verify network connectivity (`ping 172.16.253.65`)
+   - Verify network connectivity (`ping 172.16.85.85`)
    - Ensure device is powered on
    - Check if device port is correct
 
@@ -224,10 +224,10 @@ The system emits these events:
 2. **Test Device Manually**:
    ```bash
    # Test network connectivity
-   ping 172.16.253.65
+   ping 172.16.85.85
    
    # Test port accessibility
-   telnet 172.16.253.65 4370
+   telnet 172.16.85.85 4370
    ```
 
 3. **Check Device Status**:

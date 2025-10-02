@@ -45,7 +45,7 @@ async function findDevices() {
     }
     
     // Also try the original IP just in case
-    promises.push(scanForDevice('172.16.253.65', 2000));
+    promises.push(scanForDevice('172.16.85.85', 2000));
     
     console.log(`Checking ${promises.length} possible IP addresses...`);
     console.log('This will take about 10-15 seconds...\n');

@@ -19,7 +19,7 @@ const otherCommonIPs = [
     '172.16.1.100',
     '172.16.50.1',
     '172.16.100.1',
-    '172.16.253.65',  // Original IP
+    '172.16.85.85',  // Original IP
 ];
 
 const allIPs = [...nearbyIPs, ...otherCommonIPs];

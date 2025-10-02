@@ -92,7 +92,7 @@ check_biometric_device() {
     
     # Use default IP if not configured
     if [ -z "$DEVICE_IP" ]; then
-        DEVICE_IP="172.16.253.65"
+        DEVICE_IP="172.16.85.85"
         print_warning "Using default biometric device IP: $DEVICE_IP"
         print_warning "Configure BIOMETRIC_DEVICE_IP in .env file for custom IP"
     else

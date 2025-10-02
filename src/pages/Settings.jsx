@@ -188,7 +188,22 @@ const Settings = () => {
         const response = await window.api.settings.getSettings();
         if (response && response.success && response.settings) {
           console.log('Loaded settings:', response.settings); // Debug log
-          setSettings(prev => ({ ...prev, ...response.settings }));
+          
+          // For totalSeats, just ensure it exists but preserve the exact value from DB
+          if (response.settings.general) {
+            if (response.settings.general.totalSeats === undefined) {
+              // Only set default if missing
+              response.settings.general.totalSeats = '50';
+              console.log('No totalSeats found, setting default:', response.settings.general.totalSeats);
+            } else {
+              console.log('Loaded totalSeats from DB:', response.settings.general.totalSeats);
+              // Use the raw value as-is, no conversion
+            }
+          }
+          
+          // Create a deep copy to ensure we're not keeping any references
+          const normalizedSettings = JSON.parse(JSON.stringify(response.settings));
+          setSettings(prev => ({ ...prev, ...normalizedSettings }));
         } else {
           console.log('No settings found, using defaults'); // Debug log
           // Ensure default document types are set if no settings exist
@@ -314,16 +329,23 @@ const Settings = () => {
         return;
       }
 
-      // Validate total seats
-      const totalSeats = parseInt(settings.general.totalSeats);
-      if (isNaN(totalSeats) || totalSeats <= 0) {
+      // Special handling for totalSeats - store exactly what the user entered if valid
+      console.log('Total seats before save:', settings.general.totalSeats, 'Type:', typeof settings.general.totalSeats);
+      
+      // Get the raw string value
+      const rawTotalSeats = settings.general.totalSeats;
+      
+      // Only validate that it's a positive number, but don't modify the actual value
+      const totalSeatsNum = parseInt(rawTotalSeats, 10);
+      if (isNaN(totalSeatsNum) || totalSeatsNum <= 0) {
         error('Total seats must be a valid number greater than 0');
         setLoading(false);
         return;
       }
-
-      // Ensure totalSeats is stored as a string for consistency with other settings
-      settings.general.totalSeats = totalSeats.toString();
+      
+      // IMPORTANT: Preserve the original string value as entered by the user
+      // No toString conversion, no parseInt/floor operations - these can cause value changes
+      console.log('Using original total seats value for save:', rawTotalSeats);
 
       // Validate payment plans (only if plans exist)
       const customPlans = settings?.payment?.customPlans || [];
@@ -377,6 +399,10 @@ const Settings = () => {
   };
 
   const handleSettingChange = (category, key, value) => {
+    // For totalSeats, we just use the raw string value without conversion
+    // This avoids any numeric conversion issues that might be causing the value changes
+    console.log('handleSettingChange:', category, key, value, 'Type:', typeof value);
+    
     setSettings(prev => ({
       ...prev,
       [category]: {
@@ -633,16 +659,45 @@ const Settings = () => {
         </div>
         <div className="form-group">
           <label>Total Seats *</label>
+          {/* Use a text input instead of number to fully control the value */}
           <input
-            type="number"
+            type="text"
             value={settings?.general?.totalSeats ?? ''}
-            onChange={(e) => handleSettingChange('general', 'totalSeats', e.target.value)}
+            onChange={(e) => {
+              const inputValue = e.target.value;
+              console.log('Total seats input raw value:', inputValue);
+              
+              // Only allow digits in the input
+              if (/^\d*$/.test(inputValue)) {
+                if (inputValue === '') {
+                  // Allow empty field during editing
+                  handleSettingChange('general', 'totalSeats', '');
+                } else {
+                  // Store the direct string value - no parsing needed
+                  console.log('Storing total seats text as:', inputValue);
+                  handleSettingChange('general', 'totalSeats', inputValue);
+                }
+              }
+              // Ignore non-numeric inputs
+            }}
+            onBlur={(e) => {
+              const inputValue = e.target.value;
+              
+              // On blur, ensure we have a valid non-zero value
+              if (inputValue === '' || parseInt(inputValue, 10) <= 0) {
+                console.log('Empty or invalid seat value on blur, defaulting to 50');
+                handleSettingChange('general', 'totalSeats', '50');
+              }
+            }}
             className="form-control"
-            min="1"
-            max="500"
+            pattern="\d*"
             placeholder="Total number of seats available (default: 50)"
             required
           />
+          {/* Hidden warning if value looks invalid */}
+          {settings?.general?.totalSeats && parseInt(settings?.general?.totalSeats, 10) <= 0 && 
+            <small className="text-warning">Please enter a valid number greater than zero</small>
+          }
           <small className="form-help">This value is applied system-wide for seat allocation</small>
         </div>
         <div className="form-group">
@@ -1259,25 +1314,27 @@ const Settings = () => {
         const planToUpdate = currentPlans.find(plan => plan.id === planId);
         if (!planToUpdate) return;
 
+        console.log(`Updating plan field: ${field} to value: ${value} (type: ${typeof value})`);
+
         // Update the local state immediately for responsive UI
         const updatedPlan = { ...planToUpdate, [field]: value };
         
         // Map Settings page fields to database fields and ensure no null values
         const dbPlan = {
-          name: updatedPlan.name || planToUpdate.name || 'New Plan',
-          duration_days: updatedPlan.days || updatedPlan.duration_days || 30,
-          price: updatedPlan.amount || updatedPlan.price || 1000,
+          name: field === 'name' ? value : (updatedPlan.name || planToUpdate.name || 'New Plan'),
+          duration_days: field === 'days' ? value : (updatedPlan.days || updatedPlan.duration_days || 30),
+          price: field === 'amount' ? value : (updatedPlan.amount || updatedPlan.price || 1000),
           description: updatedPlan.description || planToUpdate.description || 'Custom membership plan'
         };
         
         // Ensure required fields are not null or empty
-        if (!dbPlan.name || dbPlan.name.trim() === '') {
+        if (dbPlan.name === undefined || dbPlan.name === null || dbPlan.name.trim() === '') {
           dbPlan.name = 'New Plan';
         }
-        if (!dbPlan.duration_days || isNaN(dbPlan.duration_days) || dbPlan.duration_days < 1) {
+        if (!dbPlan.duration_days || dbPlan.duration_days === '' || isNaN(parseInt(dbPlan.duration_days)) || parseInt(dbPlan.duration_days) < 1) {
           dbPlan.duration_days = 30;
         }
-        if (!dbPlan.price || isNaN(dbPlan.price) || dbPlan.price < 0) {
+        if (!dbPlan.price || dbPlan.price === '' || isNaN(parseInt(dbPlan.price)) || parseInt(dbPlan.price) < 0) {
           dbPlan.price = 1000;
         }
         
@@ -1285,18 +1342,19 @@ const Settings = () => {
         
         if (result.success) {
           // Update local state with the corrected values
+          // Use the direct values from the user input whenever possible
           const updatedPlans = currentPlans.map(plan =>
             plan.id === planId ? { 
               ...plan, 
-              [field]: value,
-              // Also sync the database field names for consistency
-              name: dbPlan.name,
-              duration_days: dbPlan.duration_days,
-              price: dbPlan.price,
+              [field]: value, // Direct user input value for the changed field
+              // Sync database field names for consistency
+              name: field === 'name' ? value : dbPlan.name,
+              duration_days: field === 'days' ? value : dbPlan.duration_days,
+              price: field === 'amount' ? value : dbPlan.price,
               description: dbPlan.description,
-              // Keep UI field names in sync
-              days: dbPlan.duration_days,
-              amount: dbPlan.price
+              // Keep UI field names in sync - prefer direct user input values
+              days: field === 'days' ? value : dbPlan.duration_days,
+              amount: field === 'amount' ? value : dbPlan.price
             } : plan
           );
           handleSettingChange('payment', 'customPlans', updatedPlans);
@@ -1383,7 +1441,11 @@ const Settings = () => {
                     <input
                       type="text"
                       value={plan.name ?? ''}
-                      onChange={(e) => updatePlan(plan.id, 'name', e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        console.log('Plan name changing to:', value);
+                        updatePlan(plan.id, 'name', value);
+                      }}
                       className="form-control"
                       placeholder="e.g., Monthly Plan, Student Plan"
                       required
@@ -1393,12 +1455,17 @@ const Settings = () => {
                   <div className="form-group">
                     <label>Amount (₹) *</label>
                     <input
-                      type="number"
+                      type="text"
                       value={plan.amount ?? plan.price ?? ''}
-                      onChange={(e) => updatePlan(plan.id, 'amount', e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Only allow digits in the input
+                        if (/^\d*$/.test(value)) {
+                          updatePlan(plan.id, 'amount', value);
+                        }
+                      }}
                       className="form-control"
-                      min="1"
-                      step="50"
+                      pattern="\d*"
                       placeholder="Plan amount (default: 1000)"
                       required
                     />
@@ -1407,11 +1474,17 @@ const Settings = () => {
                   <div className="form-group">
                     <label>Duration (Days) *</label>
                     <input
-                      type="number"
+                      type="text"
                       value={plan.days ?? plan.duration_days ?? ''}
-                      onChange={(e) => updatePlan(plan.id, 'days', e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Only allow digits in the input
+                        if (/^\d*$/.test(value)) {
+                          updatePlan(plan.id, 'days', value);
+                        }
+                      }}
                       className="form-control"
-                      min="1"
+                      pattern="\d*"
                       placeholder="Number of days (default: 30)"
                       required
                     />
