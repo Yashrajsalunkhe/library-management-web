@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, shell, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const { format } = require('date-fns');
 const isDev = process.env.NODE_ENV === 'development';
@@ -258,6 +259,11 @@ const createWindow = async () => {
 
   console.log('Window created, showing...');
 
+  // Initialize auto-updater (only in production)
+  if (!isDev) {
+    initializeAutoUpdater();
+  }
+
   // Create application menu
   createMenu(mainWindow);
 
@@ -335,7 +341,18 @@ const createWindow = async () => {
   }
 
   // Load the app
-  if (isDev) {
+  const isPackaged = app.isPackaged;
+  const isDevMode = process.env.NODE_ENV === 'development' && !isPackaged;
+  
+  console.log('Environment check:', {
+    isDev,
+    isDevMode,
+    isPackaged,
+    NODE_ENV: process.env.NODE_ENV
+  });
+  
+  if (isDevMode) {
+    console.log('Running in development mode, trying to connect to dev server...');
     // Try multiple ports for dev server
     const ports = [5173, 5174, 5175, 3000];
     let loaded = false;
@@ -353,16 +370,62 @@ const createWindow = async () => {
     }
     
     if (!loaded) {
-      console.error('Failed to load from any development server port');
-      // Try to load a fallback page
-      mainWindow.loadFile(path.join(__dirname, '../index.html'));
+      console.error('Failed to load from any development server port, falling back to built files');
+      // Fallback to built files
+      const distPath = path.join(__dirname, '../dist/index.html');
+      console.log('Loading fallback from:', distPath);
+      await mainWindow.loadFile(distPath);
     }
     
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
-    console.log('Loading from file:', path.join(__dirname, '../dist/index.html'));
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    console.log('Running in production mode');
+    const distPath = path.join(__dirname, '../dist/index.html');
+    console.log('Loading from file:', distPath);
+    
+    // Check if the dist file exists
+    if (require('fs').existsSync(distPath)) {
+      await mainWindow.loadFile(distPath);
+      console.log('Successfully loaded production app');
+      
+      // Add error handling for web contents
+      mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+        console.error('Failed to load web contents:', errorCode, errorDescription, validatedURL);
+      });
+      
+      mainWindow.webContents.on('dom-ready', () => {
+        console.log('DOM is ready');
+      });
+      
+      mainWindow.webContents.on('did-finish-load', () => {
+        console.log('Page finished loading');
+      });
+      
+    } else {
+      console.error('Production dist file not found at:', distPath);
+      // Try alternative paths
+      const alternativePaths = [
+        path.join(__dirname, '../index.html'),
+        path.join(process.resourcesPath, 'app', 'dist', 'index.html'),
+        path.join(process.resourcesPath, 'dist', 'index.html')
+      ];
+      
+      let loaded = false;
+      for (const altPath of alternativePaths) {
+        if (require('fs').existsSync(altPath)) {
+          console.log('Found alternative path:', altPath);
+          await mainWindow.loadFile(altPath);
+          loaded = true;
+          break;
+        }
+      }
+      
+      if (!loaded) {
+        console.error('No valid index.html found, creating error page');
+        await mainWindow.loadURL('data:text/html,<h1>Error: Could not load application</h1><p>Please reinstall the application.</p>');
+      }
+    }
   }
 
   // Add keyboard shortcuts
@@ -395,6 +458,88 @@ const createWindow = async () => {
 
   return mainWindow;
 };
+
+// Auto-updater configuration
+function initializeAutoUpdater() {
+  // Configure auto-updater
+  autoUpdater.checkForUpdatesAndNotify();
+  
+  // Set up auto-updater events
+  autoUpdater.on('checking-for-update', () => {
+    console.log('Checking for update...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('Update available:', info);
+    
+    // Show notification to user
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-available', {
+        version: info.version,
+        releaseNotes: info.releaseNotes
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('Update not available:', info);
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('Error in auto-updater:', err);
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    let log_message = "Download speed: " + progressObj.bytesPerSecond;
+    log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+    log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+    console.log(log_message);
+    
+    // Send progress to renderer
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('download-progress', progressObj);
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('Update downloaded:', info);
+    
+    // Show dialog to user
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update ready',
+        message: 'Update downloaded',
+        detail: 'A new version has been downloaded. Restart the application to apply the update.',
+        buttons: ['Restart', 'Later']
+      }).then((result) => {
+        if (result.response === 0) {
+          autoUpdater.quitAndInstall();
+        }
+      });
+    }
+  });
+}
+
+// IPC handlers for manual update checking
+ipcMain.handle('check-for-updates', async () => {
+  if (!isDev) {
+    try {
+      const result = await autoUpdater.checkForUpdatesAndNotify();
+      return { success: true, result };
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: false, error: 'Updates not available in development mode' };
+});
+
+ipcMain.handle('install-update', () => {
+  if (!isDev) {
+    autoUpdater.quitAndInstall();
+  }
+});
 
 function createMenu(mainWindow) {
   const template = [
@@ -516,6 +661,43 @@ function createMenu(mainWindow) {
             } catch (error) {
               console.error('Report generation failed:', error);
             }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Check for Updates',
+          click: async () => {
+            if (!isDev) {
+              try {
+                await autoUpdater.checkForUpdatesAndNotify();
+              } catch (error) {
+                dialog.showErrorBox('Update Error', 'Failed to check for updates: ' + error.message);
+              }
+            } else {
+              dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                title: 'Updates',
+                message: 'Update checking is not available in development mode.',
+                buttons: ['OK']
+              });
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'About',
+          click: () => {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'About Library Management System',
+              message: 'Library Management System',
+              detail: `Version: ${app.getVersion()}\nDeveloper: Yashraj Salunkhe\n\nA comprehensive library management solution with biometric integration.`,
+              buttons: ['OK']
+            });
           }
         }
       ]

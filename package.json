@@ -11,6 +11,12 @@
     "build": "vite build",
     "electron:build": "npm run build && electron-builder",
     "dist": "npm run build && electron-builder --publish=never",
+    "dist:win": "npm run build && electron-builder --win --publish=never",
+    "dist:mac": "npm run build && electron-builder --mac --publish=never",
+    "dist:linux": "npm run build && electron-builder --linux --publish=never",
+    "dist:all": "npm run build && electron-builder --win --mac --linux --publish=never",
+    "pack": "npm run build && electron-builder --dir",
+    "release": "npm run build && electron-builder --publish=always",
     "rebuild": "electron-rebuild",
     "postinstall": "electron-builder install-app-deps",
     "start": "concurrently \"npm run dev\" \"npm run wait-and-electron\"",
@@ -43,6 +49,7 @@
     "better-sqlite3": "^12.4.1",
     "date-fns": "^3.3.1",
     "dotenv": "^16.4.1",
+    "electron-updater": "^6.6.2",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.544.0",
     "node-cron": "^3.0.3",
@@ -60,26 +67,132 @@
     "cross-env": "^10.0.0",
     "electron": "^37.2.6",
     "electron-builder": "^24.9.1",
-    "electron-rebuild": "^3.2.9"
+    "electron-rebuild": "^3.2.9",
+    "sharp": "^0.34.4"
   },
   "build": {
     "appId": "com.yashraj.library-management",
     "productName": "Library Management System",
+    "copyright": "Copyright © 2025 Yashraj Salunkhe",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "build-resources"
     },
     "files": [
       "electron/**/*",
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/library.db",
+        "to": "library.db",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker",
+      "publisherName": "Yashraj Salunkhe",
+      "verifyUpdateCodeSignature": false
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Office"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Library Management System",
+      "uninstallDisplayName": "Library Management System",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "menuCategory": "Library Management",
+      "include": "build-resources/installer.nsh"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "icon": "assets/icon.png",
+      "iconSize": 100,
+      "contents": [
+        {
+          "x": 380,
+          "y": 280,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 110,
+          "y": 280,
+          "type": "file"
+        }
+      ],
+      "window": {
+        "width": 500,
+        "height": 400
+      }
+    },
+    "deb": {
+      "packageCategory": "office"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Yashrajsalunkhe",
+      "repo": "library-management"
     }
   }
 }

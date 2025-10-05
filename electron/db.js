@@ -1,18 +1,43 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { app } = require('electron');
+const os = require('os');
+
+// Get user data directory - different in development vs production
+const getUserDataPath = () => {
+  if (process.env.NODE_ENV === 'development') {
+    return __dirname;
+  } else {
+    // In production, use user's home directory for data storage
+    if (app && app.getPath) {
+      return app.getPath('userData');
+    } else {
+      // Fallback for when app is not available
+      return path.join(os.homedir(), '.config', 'library-management');
+    }
+  }
+};
+
+const userDataPath = getUserDataPath();
 
 // Ensure database directory exists
-const dbDir = path.dirname(path.join(__dirname, 'library.db'));
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+if (!fs.existsSync(userDataPath)) {
+  fs.mkdirSync(userDataPath, { recursive: true });
 }
 
-const dbPath = path.join(__dirname, 'library.db');
+const dbPath = path.join(userDataPath, 'library.db');
+
+// Copy default database if it doesn't exist
+const defaultDbPath = path.join(__dirname, 'library.db');
+if (!fs.existsSync(dbPath) && fs.existsSync(defaultDbPath)) {
+  console.log('Copying default database to user data directory...');
+  fs.copyFileSync(defaultDbPath, dbPath);
+}
 
 // Create database with explicit options to ensure write access
 const db = new Database(dbPath, { 
-  verbose: console.log,
+  verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
   fileMustExist: false,
   readonly: false
 });

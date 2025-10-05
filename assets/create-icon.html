@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Library Management Icon Generator</title>
+</head>
+<body>
+    <canvas id="iconCanvas" width="512" height="512" style="border: 1px solid #ccc;"></canvas>
+    <br>
+    <button onclick="downloadIcon('png')">Download PNG</button>
+    <button onclick="downloadIcon('ico')">Download ICO</button>
+    
+    <script>
+        const canvas = document.getElementById('iconCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create a library icon
+        function drawIcon() {
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+            gradient.addColorStop(0, '#4f46e5');
+            gradient.addColorStop(1, '#7c3aed');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // Book stack
+            ctx.fillStyle = '#ffffff';
+            
+            // Book 1 (bottom)
+            ctx.fillRect(100, 350, 300, 40);
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillRect(100, 350, 300, 8);
+            
+            // Book 2 (middle)
+            ctx.fillStyle = '#f3f4f6';
+            ctx.fillRect(120, 310, 280, 40);
+            ctx.fillStyle = '#d1d5db';
+            ctx.fillRect(120, 310, 280, 8);
+            
+            // Book 3 (top)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(140, 270, 260, 40);
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillRect(140, 270, 260, 8);
+            
+            // Building/Library icon
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(200, 120, 112, 150);
+            
+            // Columns
+            ctx.fillStyle = '#ffffff';
+            for(let i = 0; i < 4; i++) {
+                ctx.fillRect(210 + i * 23, 140, 8, 110);
+            }
+            
+            // Roof
+            ctx.fillStyle = '#dc2626';
+            ctx.beginPath();
+            ctx.moveTo(180, 120);
+            ctx.lineTo(256, 80);
+            ctx.lineTo(332, 120);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('LMS', 256, 450);
+        }
+        
+        function downloadIcon(format) {
+            if (format === 'png') {
+                const link = document.createElement('a');
+                link.download = 'icon.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        }
+        
+        drawIcon();
+    </script>
+</body>
+</html>
