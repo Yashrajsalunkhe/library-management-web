@@ -3405,3 +3405,63 @@ select.form-input {
     min-height: 150px;
   }
 }
+
+/* Environment Settings Styles */
+.env-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.env-section h4 {
+  margin: 0 0 1rem 0;
+  color: #2d3748;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.env-warning {
+  background: #fed7d7;
+  border: 1px solid #fc8181;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1.5rem;
+}
+
+.env-warning p {
+  margin: 0;
+  color: #742a2a;
+  font-size: 0.9rem;
+}
+
+.section-description {
+  color: #718096;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Environment form specific styling */
+.env-section .form-group input[type="password"] {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
+}
+
+.env-section .form-group input[type="url"] {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.env-section .form-group input[pattern] {
+  font-family: 'Courier New', monospace;
+}
+
+/* Enhanced button styling for environment section */
+.env-section + .button-group {
+  margin-top: 2rem;
+}

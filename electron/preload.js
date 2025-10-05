@@ -110,6 +110,12 @@ contextBridge.exposeInMainWorld('api', {
     saveSettings: (settings) => ipcRenderer.invoke('settings:saveSettings', settings)
   },
 
+  // Environment Variables
+  env: {
+    getVariables: () => ipcRenderer.invoke('env:getVariables'),
+    updateVariables: (envVars) => ipcRenderer.invoke('env:updateVariables', envVars)
+  },
+
   // Backup
   backup: {
     createBackup: () => ipcRenderer.invoke('backup:createBackup'),

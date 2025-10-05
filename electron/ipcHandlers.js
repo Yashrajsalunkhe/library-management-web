@@ -192,6 +192,151 @@ module.exports = (ipcMain) => {
   });
 
   // ===================
+  // ENVIRONMENT VARIABLES MANAGEMENT
+  // ===================
+
+  ipcMain.handle('env:getVariables', async () => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      const envPath = path.join(__dirname, '..', '.env');
+      
+      if (!fs.existsSync(envPath)) {
+        return { success: true, data: {} };
+      }
+      
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const envVars = {};
+      
+      // Parse .env file
+      envContent.split('\n').forEach(line => {
+        line = line.trim();
+        if (line && !line.startsWith('#')) {
+          const [key, ...valueParts] = line.split('=');
+          if (key) {
+            envVars[key.trim()] = valueParts.join('=').trim();
+          }
+        }
+      });
+      
+      return { success: true, data: envVars };
+    } catch (error) {
+      console.error('Error reading environment variables:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('env:updateVariables', async (event, envVars) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      const envPath = path.join(__dirname, '..', '.env');
+      
+      // Read existing .env file to preserve comments and structure
+      let existingContent = '';
+      const existingVars = {};
+      
+      if (fs.existsSync(envPath)) {
+        existingContent = fs.readFileSync(envPath, 'utf8');
+        
+        // Parse existing variables
+        existingContent.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const [key, ...valueParts] = line.split('=');
+            if (key) {
+              existingVars[key.trim()] = valueParts.join('=').trim();
+            }
+          }
+        });
+      }
+      
+      // Update the variables
+      Object.entries(envVars).forEach(([key, value]) => {
+        existingVars[key] = value;
+      });
+      
+      // Rebuild the .env file content
+      let newContent = '';
+      
+      // Add header comment if file is empty
+      if (!existingContent) {
+        newContent = '# Environment Configuration\n# Updated via Settings Interface\n\n';
+      }
+      
+      // Group variables by category for better organization
+      const categories = {
+        'Email Configuration': ['EMAIL_HOST', 'EMAIL_PORT', 'EMAIL_USER', 'EMAIL_PASS', 'EMAIL_FROM'],
+        'WhatsApp Configuration': ['GUPSHUP_API_KEY', 'GUPSHUP_APP_NAME', 'GUPSHUP_BASE_URL'],
+        'Biometric Integration': ['BIOMETRIC_DEVICE_IP', 'BIOMETRIC_DEVICE_PORT', 'BIOMETRIC_TIMEOUT', 'BIOMETRIC_INTERNAL_TIMEOUT', 'BIOMETRIC_POLL_INTERVAL'],
+        'Application Settings': ['DB_BACKUP_INTERVAL', 'NOTIFICATION_DAYS_BEFORE_EXPIRY', 'AUTO_BACKUP_PATH']
+      };
+      
+      // Keep existing structure if content exists, otherwise create organized structure
+      if (existingContent) {
+        // Update existing file while preserving structure
+        const lines = existingContent.split('\n');
+        const updatedLines = lines.map(line => {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#')) {
+            const [key] = line.split('=');
+            if (key && existingVars.hasOwnProperty(key.trim())) {
+              return `${key.trim()}=${existingVars[key.trim()]}`;
+            }
+          }
+          return line;
+        });
+        
+        // Add any new variables that weren't in the original file
+        Object.entries(existingVars).forEach(([key, value]) => {
+          const found = lines.some(line => {
+            const trimmed = line.trim();
+            return trimmed && !trimmed.startsWith('#') && line.split('=')[0]?.trim() === key;
+          });
+          
+          if (!found) {
+            updatedLines.push(`${key}=${value}`);
+          }
+        });
+        
+        newContent = updatedLines.join('\n');
+      } else {
+        // Create organized structure for new file
+        Object.entries(categories).forEach(([categoryName, keys]) => {
+          const categoryVars = keys.filter(key => existingVars.hasOwnProperty(key));
+          if (categoryVars.length > 0) {
+            newContent += `# ${categoryName}\n`;
+            categoryVars.forEach(key => {
+              newContent += `${key}=${existingVars[key]}\n`;
+            });
+            newContent += '\n';
+          }
+        });
+        
+        // Add any uncategorized variables
+        const categorizedKeys = Object.values(categories).flat();
+        const uncategorizedKeys = Object.keys(existingVars).filter(key => !categorizedKeys.includes(key));
+        if (uncategorizedKeys.length > 0) {
+          newContent += '# Other Settings\n';
+          uncategorizedKeys.forEach(key => {
+            newContent += `${key}=${existingVars[key]}\n`;
+          });
+        }
+      }
+      
+      // Write the updated .env file
+      fs.writeFileSync(envPath, newContent);
+      
+      return { success: true, message: 'Environment variables updated successfully' };
+    } catch (error) {
+      console.error('Error updating environment variables:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  // ===================
   // MEMBERS MANAGEMENT
   // ===================
   

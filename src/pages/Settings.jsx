@@ -98,6 +98,25 @@ const Settings = () => {
       keepBackupsFor: '30',
       cloudBackup: false,
       cloudProvider: 'none'
+    },
+    // Environment Variables
+    environment: {
+      EMAIL_HOST: '',
+      EMAIL_PORT: '',
+      EMAIL_USER: '',
+      EMAIL_PASS: '',
+      EMAIL_FROM: '',
+      GUPSHUP_API_KEY: '',
+      GUPSHUP_APP_NAME: '',
+      GUPSHUP_BASE_URL: '',
+      BIOMETRIC_DEVICE_IP: '',
+      BIOMETRIC_DEVICE_PORT: '',
+      BIOMETRIC_TIMEOUT: '',
+      BIOMETRIC_INTERNAL_TIMEOUT: '',
+      BIOMETRIC_POLL_INTERVAL: '',
+      DB_BACKUP_INTERVAL: '',
+      NOTIFICATION_DAYS_BEFORE_EXPIRY: '',
+      AUTO_BACKUP_PATH: ''
     }
   });
 
@@ -107,6 +126,8 @@ const Settings = () => {
   const [newHoliday, setNewHoliday] = useState({ date: '', name: '' });
   const [backupList, setBackupList] = useState([]);
   const [loadingBackups, setLoadingBackups] = useState(false);
+  const [envLoading, setEnvLoading] = useState(false);
+  const [envSaving, setEnvSaving] = useState(false);
 
   // Password change state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -157,6 +178,7 @@ const Settings = () => {
   useEffect(() => {
     loadSettings();
     loadCustomPlans();
+    loadEnvironmentVariables();
   }, []);
 
   // Initialize document types if missing
@@ -178,6 +200,13 @@ const Settings = () => {
   useEffect(() => {
     if (activeTab === 'backup') {
       loadBackups();
+    }
+  }, [activeTab]);
+
+  // Load environment variables when environment tab is active
+  useEffect(() => {
+    if (activeTab === 'environment') {
+      loadEnvironmentVariables();
     }
   }, [activeTab]);
 
@@ -253,6 +282,29 @@ const Settings = () => {
       }
     } catch (err) {
       console.error('Failed to load custom plans:', err);
+    }
+  };
+
+  const loadEnvironmentVariables = async () => {
+    setEnvLoading(true);
+    try {
+      if (window.api?.env?.getVariables) {
+        const result = await window.api.env.getVariables();
+        if (result.success) {
+          setSettings(prev => ({
+            ...prev,
+            environment: {
+              ...prev.environment,
+              ...result.data
+            }
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load environment variables:', err);
+      error('Failed to load environment variables');
+    } finally {
+      setEnvLoading(false);
     }
   };
 
@@ -395,6 +447,25 @@ const Settings = () => {
       error('Failed to save settings: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveEnvironmentVariables = async () => {
+    setEnvSaving(true);
+    try {
+      if (window.api?.env?.updateVariables) {
+        const result = await window.api.env.updateVariables(settings.environment);
+        if (result.success) {
+          success('Environment variables saved successfully! Please restart the application for changes to take effect.');
+        } else {
+          error('Failed to save environment variables: ' + result.message);
+        }
+      }
+    } catch (err) {
+      console.error('Error saving environment variables:', err);
+      error('Failed to save environment variables: ' + err.message);
+    } finally {
+      setEnvSaving(false);
     }
   };
 
@@ -639,6 +710,7 @@ const Settings = () => {
     { id: 'payment', label: 'Payment', icon: '💰' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
     { id: 'security', label: 'Security', icon: '🔒' },
+    { id: 'environment', label: 'Environment Config', icon: '🔧' },
     { id: 'backup', label: 'Backup & Data', icon: '💾' }
   ];
 
@@ -1972,6 +2044,236 @@ const Settings = () => {
     </div>
   );
 
+  const renderEnvironmentSettings = () => (
+    <div className="settings-section">
+      <h3>🔧 Environment Configuration</h3>
+      <p className="section-description">
+        Configure environment variables for external services and application settings. 
+        <strong> Changes require application restart to take effect.</strong>
+      </p>
+      
+      {envLoading ? (
+        <div className="loading-container">
+          <p>Loading environment variables...</p>
+        </div>
+      ) : (
+        <>
+          <div className="env-section">
+            <h4>📧 Email Configuration</h4>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Email Host</label>
+                <input
+                  type="text"
+                  value={settings.environment?.EMAIL_HOST || ''}
+                  onChange={(e) => handleSettingChange('environment', 'EMAIL_HOST', e.target.value)}
+                  className="form-control"
+                  placeholder="smtp.gmail.com"
+                />
+              </div>
+              <div className="form-group">
+                <label>Email Port</label>
+                <input
+                  type="number"
+                  value={settings.environment?.EMAIL_PORT || ''}
+                  onChange={(e) => handleSettingChange('environment', 'EMAIL_PORT', e.target.value)}
+                  className="form-control"
+                  placeholder="587"
+                />
+              </div>
+              <div className="form-group">
+                <label>Email User</label>
+                <input
+                  type="email"
+                  value={settings.environment?.EMAIL_USER || ''}
+                  onChange={(e) => handleSettingChange('environment', 'EMAIL_USER', e.target.value)}
+                  className="form-control"
+                  placeholder="your-email@gmail.com"
+                />
+              </div>
+              <div className="form-group">
+                <label>Email Password/App Password</label>
+                <input
+                  type="password"
+                  value={settings.environment?.EMAIL_PASS || ''}
+                  onChange={(e) => handleSettingChange('environment', 'EMAIL_PASS', e.target.value)}
+                  className="form-control"
+                  placeholder="your-app-password"
+                />
+              </div>
+              <div className="form-group">
+                <label>From Email Address</label>
+                <input
+                  type="email"
+                  value={settings.environment?.EMAIL_FROM || ''}
+                  onChange={(e) => handleSettingChange('environment', 'EMAIL_FROM', e.target.value)}
+                  className="form-control"
+                  placeholder="noreply@yourdomain.com"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="env-section">
+            <h4>📱 WhatsApp Configuration (Gupshup)</h4>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Gupshup API Key</label>
+                <input
+                  type="password"
+                  value={settings.environment?.GUPSHUP_API_KEY || ''}
+                  onChange={(e) => handleSettingChange('environment', 'GUPSHUP_API_KEY', e.target.value)}
+                  className="form-control"
+                  placeholder="your-gupshup-api-key"
+                />
+              </div>
+              <div className="form-group">
+                <label>Gupshup App Name</label>
+                <input
+                  type="text"
+                  value={settings.environment?.GUPSHUP_APP_NAME || ''}
+                  onChange={(e) => handleSettingChange('environment', 'GUPSHUP_APP_NAME', e.target.value)}
+                  className="form-control"
+                  placeholder="your-app-name"
+                />
+              </div>
+              <div className="form-group">
+                <label>Gupshup Base URL</label>
+                <input
+                  type="url"
+                  value={settings.environment?.GUPSHUP_BASE_URL || ''}
+                  onChange={(e) => handleSettingChange('environment', 'GUPSHUP_BASE_URL', e.target.value)}
+                  className="form-control"
+                  placeholder="https://api.gupshup.io/sm/api/v1"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="env-section">
+            <h4>👆 Biometric Device Configuration</h4>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Device IP Address</label>
+                <input
+                  type="text"
+                  value={settings.environment?.BIOMETRIC_DEVICE_IP || ''}
+                  onChange={(e) => handleSettingChange('environment', 'BIOMETRIC_DEVICE_IP', e.target.value)}
+                  className="form-control"
+                  placeholder="172.16.85.85"
+                  pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
+                />
+              </div>
+              <div className="form-group">
+                <label>Device Port</label>
+                <input
+                  type="number"
+                  value={settings.environment?.BIOMETRIC_DEVICE_PORT || ''}
+                  onChange={(e) => handleSettingChange('environment', 'BIOMETRIC_DEVICE_PORT', e.target.value)}
+                  className="form-control"
+                  placeholder="4370"
+                  min="1"
+                  max="65535"
+                />
+              </div>
+              <div className="form-group">
+                <label>Connection Timeout (ms)</label>
+                <input
+                  type="number"
+                  value={settings.environment?.BIOMETRIC_TIMEOUT || ''}
+                  onChange={(e) => handleSettingChange('environment', 'BIOMETRIC_TIMEOUT', e.target.value)}
+                  className="form-control"
+                  placeholder="5000"
+                  min="1000"
+                />
+              </div>
+              <div className="form-group">
+                <label>Internal Timeout (ms)</label>
+                <input
+                  type="number"
+                  value={settings.environment?.BIOMETRIC_INTERNAL_TIMEOUT || ''}
+                  onChange={(e) => handleSettingChange('environment', 'BIOMETRIC_INTERNAL_TIMEOUT', e.target.value)}
+                  className="form-control"
+                  placeholder="10000"
+                  min="1000"
+                />
+              </div>
+              <div className="form-group">
+                <label>Poll Interval (ms)</label>
+                <input
+                  type="number"
+                  value={settings.environment?.BIOMETRIC_POLL_INTERVAL || ''}
+                  onChange={(e) => handleSettingChange('environment', 'BIOMETRIC_POLL_INTERVAL', e.target.value)}
+                  className="form-control"
+                  placeholder="5000"
+                  min="1000"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="env-section">
+            <h4>⚙️ Application Settings</h4>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Database Backup Interval</label>
+                <input
+                  type="text"
+                  value={settings.environment?.DB_BACKUP_INTERVAL || ''}
+                  onChange={(e) => handleSettingChange('environment', 'DB_BACKUP_INTERVAL', e.target.value)}
+                  className="form-control"
+                  placeholder="24h"
+                />
+              </div>
+              <div className="form-group">
+                <label>Notification Days Before Expiry</label>
+                <input
+                  type="number"
+                  value={settings.environment?.NOTIFICATION_DAYS_BEFORE_EXPIRY || ''}
+                  onChange={(e) => handleSettingChange('environment', 'NOTIFICATION_DAYS_BEFORE_EXPIRY', e.target.value)}
+                  className="form-control"
+                  placeholder="10"
+                  min="1"
+                />
+              </div>
+              <div className="form-group">
+                <label>Auto Backup Path</label>
+                <input
+                  type="text"
+                  value={settings.environment?.AUTO_BACKUP_PATH || ''}
+                  onChange={(e) => handleSettingChange('environment', 'AUTO_BACKUP_PATH', e.target.value)}
+                  className="form-control"
+                  placeholder="./backups"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="button-group">
+            <button 
+              onClick={saveEnvironmentVariables} 
+              className="button button-primary"
+              disabled={envSaving}
+            >
+              {envSaving ? '💾 Saving...' : '💾 Save Environment Variables'}
+            </button>
+            <button 
+              onClick={loadEnvironmentVariables} 
+              className="button button-secondary"
+              disabled={envLoading}
+            >
+              🔄 Reload Variables
+            </button>
+          </div>
+
+          <div className="env-warning">
+            <p><strong>⚠️ Important:</strong> After saving environment variables, you must restart the application for changes to take effect in all services.</p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
@@ -1986,6 +2288,8 @@ const Settings = () => {
         return renderNotificationSettings();
       case 'security':
         return renderSecuritySettings();
+      case 'environment':
+        return renderEnvironmentSettings();
       case 'backup':
         return renderBackupSettings();
       default:
