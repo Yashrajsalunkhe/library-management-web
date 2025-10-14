@@ -1376,7 +1376,8 @@ Library Management Team
         title: 'Save Receipt',
         defaultPath: defaultFileName,
         filters: [
-          { name: 'PDF', extensions: ['pdf'] }
+          { name: 'PDF Files', extensions: ['pdf'] },
+          { name: 'All Files', extensions: ['*'] }
         ]
       });
 
@@ -1401,7 +1402,7 @@ Library Management Team
         } catch (e) {
           console.error('Failed to show file in folder:', e);
         }
-        return { success: true, path: filePath };
+        return { success: true, path: filePath, message: `Receipt saved successfully to ${filePath}` };
       }
       return { success: false, error: result.error || 'Failed to generate receipt' };
     } catch (error) {
@@ -1443,6 +1444,340 @@ Library Management Team
       return { success: true };
     } catch (error) {
       return { success: false, message: error.message };
+    }
+  });
+
+  // Helper function to get file filters based on format
+  function getExportFilters(format) {
+    switch (format.toLowerCase()) {
+      case 'xlsx':
+        return [
+          { name: 'Excel Files', extensions: ['xlsx'] },
+          { name: 'All Files', extensions: ['*'] }
+        ];
+      case 'csv':
+        return [
+          { name: 'CSV Files', extensions: ['csv'] },
+          { name: 'All Files', extensions: ['*'] }
+        ];
+      case 'pdf':
+        return [
+          { name: 'PDF Files', extensions: ['pdf'] },
+          { name: 'All Files', extensions: ['*'] }
+        ];
+      default:
+        return [{ name: 'All Files', extensions: ['*'] }];
+    }
+  }
+
+  // Export with save dialog
+  ipcMain.handle('report:export-with-dialog', async (event, { type, format, dateRange, data }) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const { shell, dialog } = require('electron');
+      
+      console.log('Export with dialog request:', { type, format, dateRange, dataLength: data?.length });
+      
+      if (!data || data.length === 0) {
+        return { success: false, message: `No ${type} data available for the selected date range` };
+      }
+      
+      // Prepare default filename
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+      const dateRangeStr = dateRange ? `_${dateRange.from}_to_${dateRange.to}` : '';
+      const defaultFilename = `${type}_report${dateRangeStr}_${timestamp}.${format}`;
+      
+      // Show save dialog
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title: `Save ${type.charAt(0).toUpperCase() + type.slice(1)} Report`,
+        defaultPath: defaultFilename,
+        filters: getExportFilters(format)
+      });
+
+      if (canceled || !filePath) {
+        return { success: false, message: 'Export cancelled by user' };
+      }
+
+      // Ensure directory exists
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      const filepath = filePath;
+
+      if (format === 'xlsx') {
+        const ExcelJS = require('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(`${type.charAt(0).toUpperCase() + type.slice(1)} Report`);
+        
+        // Set workbook properties
+        workbook.creator = 'Library Management System';
+        workbook.created = new Date();
+        
+        // Add title and date range info
+        worksheet.mergeCells('A1:F1');
+        worksheet.getCell('A1').value = `${type.charAt(0).toUpperCase() + type.slice(1)} Report`;
+        worksheet.getCell('A1').font = { size: 16, bold: true };
+        worksheet.getCell('A1').alignment = { horizontal: 'center' };
+        
+        if (dateRange) {
+          worksheet.mergeCells('A2:F2');
+          worksheet.getCell('A2').value = `Period: ${dateRange.from} to ${dateRange.to}`;
+          worksheet.getCell('A2').font = { size: 12 };
+          worksheet.getCell('A2').alignment = { horizontal: 'center' };
+        }
+        
+        // Add empty row
+        worksheet.addRow([]);
+        const headerRowIndex = dateRange ? 4 : 3;
+        
+        switch (type) {
+          case 'attendance':
+            // Set headers starting from the appropriate row
+            const headers = ['Date', 'Member', 'Phone', 'Check In', 'Check Out', 'Duration', 'Status'];
+            worksheet.getRow(headerRowIndex).values = headers;
+            
+            data.forEach(record => {
+              const date = record.date || (record.original_check_in ? new Date(record.original_check_in).toISOString().slice(0, 10) : '');
+              const checkInTime = record.check_in || '';
+              const checkOutTime = record.check_out || '';
+              const duration = record.duration || '';
+              const status = record.status || 'In Progress';
+              
+              worksheet.addRow([
+                date,
+                record.member_name || '',
+                record.phone || '',
+                checkInTime,
+                checkOutTime === '' ? 'Active' : checkOutTime,
+                duration,
+                status
+              ]);
+            });
+            
+            // Set column widths
+            worksheet.columns = [
+              { width: 12 }, // Date
+              { width: 20 }, // Member
+              { width: 15 }, // Phone
+              { width: 12 }, // Check In
+              { width: 12 }, // Check Out
+              { width: 15 }, // Duration
+              { width: 12 }  // Status
+            ];
+            break;
+            
+          case 'payments':
+            // Set headers
+            const paymentHeaders = ['Date', 'Receipt #', 'Member', 'Amount (₹)', 'Mode', 'Plan', 'Note'];
+            worksheet.getRow(headerRowIndex).values = paymentHeaders;
+            
+            data.forEach(payment => {
+              const paymentDate = payment.payment_date || payment.paid_at;
+              const date = paymentDate ? new Date(paymentDate).toISOString().slice(0, 10) : '';
+              
+              worksheet.addRow([
+                date,
+                payment.receipt_number || '',
+                payment.member_name || '',
+                payment.amount || 0,
+                (payment.payment_method || payment.mode || '').charAt(0).toUpperCase() + (payment.payment_method || payment.mode || '').slice(1),
+                payment.plan_name || '',
+                payment.note || ''
+              ]);
+            });
+            
+            // Set column widths
+            worksheet.columns = [
+              { width: 12 }, // Date
+              { width: 15 }, // Receipt
+              { width: 20 }, // Member
+              { width: 12 }, // Amount
+              { width: 12 }, // Mode
+              { width: 15 }, // Plan
+              { width: 25 }  // Note
+            ];
+            
+            // Format amount column as currency
+            const amountColumn = worksheet.getColumn(4);
+            amountColumn.numFmt = '₹#,##0.00';
+            break;
+            
+          case 'expenditures':
+            // Set headers
+            const expenditureHeaders = ['Date', 'Description', 'Category', 'Amount (₹)', 'Payment Mode', 'Receipt #', 'Notes', 'Created By'];
+            worksheet.getRow(headerRowIndex).values = expenditureHeaders;
+            
+            data.forEach(expenditure => {
+              const expenditureDate = expenditure.expenditure_date || expenditure.date;
+              const date = expenditureDate ? new Date(expenditureDate).toISOString().slice(0, 10) : '';
+              
+              worksheet.addRow([
+                date,
+                expenditure.description || '',
+                expenditure.category || '',
+                expenditure.amount || 0,
+                (expenditure.payment_mode || '').charAt(0).toUpperCase() + (expenditure.payment_mode || '').slice(1),
+                expenditure.receipt_number || '',
+                expenditure.notes || '',
+                expenditure.created_by_name || ''
+              ]);
+            });
+            
+            // Set column widths
+            worksheet.columns = [
+              { width: 12 }, // Date
+              { width: 25 }, // Description
+              { width: 15 }, // Category
+              { width: 12 }, // Amount
+              { width: 15 }, // Payment Mode
+              { width: 15 }, // Receipt #
+              { width: 30 }, // Notes
+              { width: 15 }  // Created By
+            ];
+            
+            // Format amount column as currency
+            const expenditureAmountColumn = worksheet.getColumn(4);
+            expenditureAmountColumn.numFmt = '₹#,##0.00';
+            break;
+            
+          case 'members':
+            // Set headers
+            const memberHeaders = ['Name', 'Email', 'Phone', 'Plan', 'Join Date', 'End Date', 'Status'];
+            worksheet.getRow(headerRowIndex).values = memberHeaders;
+            
+            data.forEach(member => {
+              const joinDate = member.join_date ? new Date(member.join_date).toISOString().slice(0, 10) : '';
+              const endDate = member.end_date ? new Date(member.end_date).toISOString().slice(0, 10) : '';
+              
+              worksheet.addRow([
+                member.name || '',
+                member.email || '',
+                member.phone || '',
+                member.plan_name || member.plan || '',
+                joinDate,
+                endDate,
+                (member.status || '').charAt(0).toUpperCase() + (member.status || '').slice(1)
+              ]);
+            });
+            
+            // Set column widths
+            worksheet.columns = [
+              { width: 20 }, // Name
+              { width: 25 }, // Email
+              { width: 15 }, // Phone
+              { width: 15 }, // Plan
+              { width: 12 }, // Join Date
+              { width: 12 }, // End Date
+              { width: 10 }  // Status
+            ];
+            break;
+        }
+        
+        // Style the header row
+        const headerRow = worksheet.getRow(headerRowIndex);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE6F3FF' }
+        };
+        
+        // Add borders to all cells with data
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber >= headerRowIndex) {
+            row.eachCell((cell) => {
+              cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+              };
+            });
+          }
+        });
+        
+        await workbook.xlsx.writeFile(filepath);
+        
+      } else if (format === 'csv') {
+        let csvContent = '';
+        
+        switch (type) {
+          case 'attendance':
+            csvContent = 'Date,Member,Phone,Check In,Check Out,Duration,Status\n';
+            data.forEach(record => {
+              const date = record.date || (record.original_check_in ? new Date(record.original_check_in).toISOString().slice(0, 10) : '');
+              const checkInTime = record.check_in || '';
+              const checkOutTime = record.check_out || '';
+              const duration = record.duration || '';
+              const status = record.status || 'In Progress';
+              
+              // Escape quotes in data and wrap in quotes
+              const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+              
+              csvContent += `${escapeCsv(date)},${escapeCsv(record.member_name)},${escapeCsv(record.phone)},${escapeCsv(checkInTime)},${escapeCsv(checkOutTime === '' ? 'Active' : checkOutTime)},${escapeCsv(duration)},${escapeCsv(status)}\n`;
+            });
+            break;
+            
+          case 'payments':
+            csvContent = 'Date,Receipt #,Member,Amount,Mode,Plan,Note\n';
+            data.forEach(payment => {
+              const paymentDate = payment.payment_date || payment.paid_at;
+              const date = paymentDate ? new Date(paymentDate).toISOString().slice(0, 10) : '';
+              const mode = payment.payment_method || payment.mode || '';
+              
+              // Escape quotes in data and wrap in quotes
+              const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+              
+              csvContent += `${escapeCsv(date)},${escapeCsv(payment.receipt_number)},${escapeCsv(payment.member_name)},${escapeCsv(payment.amount)},${escapeCsv(mode)},${escapeCsv(payment.plan_name)},${escapeCsv(payment.note)}\n`;
+            });
+            break;
+            
+          case 'members':
+            csvContent = 'Name,Email,Phone,Plan,Join Date,End Date,Status\n';
+            data.forEach(member => {
+              const joinDate = member.join_date ? new Date(member.join_date).toISOString().slice(0, 10) : '';
+              const endDate = member.end_date ? new Date(member.end_date).toISOString().slice(0, 10) : '';
+              
+              // Escape quotes in data and wrap in quotes
+              const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+              
+              csvContent += `${escapeCsv(member.name)},${escapeCsv(member.email)},${escapeCsv(member.phone)},${escapeCsv(member.plan_name || member.plan)},${escapeCsv(joinDate)},${escapeCsv(endDate)},${escapeCsv(member.status)}\n`;
+            });
+            break;
+            
+          case 'expenditures':
+            csvContent = 'Date,Description,Category,Amount,Payment Mode,Receipt #,Notes,Created By\n';
+            data.forEach(expenditure => {
+              const expenditureDate = expenditure.expenditure_date || expenditure.date;
+              const date = expenditureDate ? new Date(expenditureDate).toISOString().slice(0, 10) : '';
+              
+              // Escape quotes in data and wrap in quotes
+              const escapeCsv = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+              
+              csvContent += `${escapeCsv(date)},${escapeCsv(expenditure.description)},${escapeCsv(expenditure.category)},${escapeCsv(expenditure.amount)},${escapeCsv(expenditure.payment_mode)},${escapeCsv(expenditure.receipt_number)},${escapeCsv(expenditure.notes)},${escapeCsv(expenditure.created_by_name)}\n`;
+            });
+            break;
+        }
+        
+        fs.writeFileSync(filepath, csvContent, 'utf8');
+      }
+
+      // Show the file in the file manager
+      shell.showItemInFolder(filepath);
+      
+      return { 
+        success: true, 
+        message: `${type.charAt(0).toUpperCase() + type.slice(1)} report exported successfully to ${filepath}!`,
+        filename: path.basename(filepath),
+        filepath,
+        recordCount: data.length
+      };
+    } catch (error) {
+      console.error('Export with dialog error:', error);
+      return { success: false, message: `Export failed: ${error.message}` };
     }
   });
 

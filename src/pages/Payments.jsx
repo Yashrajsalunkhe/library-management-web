@@ -516,7 +516,7 @@ const Payments = () => {
                               const resp = await window.api.report.downloadReceipt({ paymentId: payment.id });
                               console.log('Download receipt response:', resp);
                               if (resp.success && resp.path) {
-                                showNotification('Receipt saved to: ' + resp.path, 'success');
+                                showNotification(resp.message || 'Receipt saved successfully!', 'success');
                               } else if (resp.message === 'Save canceled by user') {
                                 // user canceled the save dialog
                                 console.log('User canceled save dialog');

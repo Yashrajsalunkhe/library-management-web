@@ -68,12 +68,12 @@ contextBridge.exposeInMainWorld('api', {
     payments: (filters) => ipcRenderer.invoke('report:payments', filters),
     expenditures: (filters) => ipcRenderer.invoke('report:expenditures', filters),
     export: (options) => ipcRenderer.invoke('report:export', options),
+    exportWithDialog: (options) => ipcRenderer.invoke('report:export-with-dialog', options),
     exportAttendance: (options) => ipcRenderer.invoke('report:export-attendance', options),
     exportPayments: (options) => ipcRenderer.invoke('report:export-payments', options),
     exportMembers: (options) => ipcRenderer.invoke('report:export-members', options),
-    generateReceipt: (options) => ipcRenderer.invoke('report:generate-receipt', options)
-  ,
-  downloadReceipt: (options) => ipcRenderer.invoke('report:download-receipt', options)
+    generateReceipt: (options) => ipcRenderer.invoke('report:generate-receipt', options),
+    downloadReceipt: (options) => ipcRenderer.invoke('report:download-receipt', options)
   },
 
   // Notifications

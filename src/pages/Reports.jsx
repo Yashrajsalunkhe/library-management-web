@@ -177,7 +177,7 @@ const Reports = ({ initialTab }) => {
 
       console.log(`Exporting ${dataToExport.length} ${type} records`);
 
-      const result = await window.api.report.export({
+      const result = await window.api.report.exportWithDialog({
         type,
         format,
         dateRange,
@@ -186,7 +186,10 @@ const Reports = ({ initialTab }) => {
       
       if (result.success) {
         const formatName = format.toUpperCase();
-        alert(`✅ ${type.charAt(0).toUpperCase() + type.slice(1)} report exported successfully!\n\n📊 Format: ${formatName}\n📁 Records: ${result.recordCount || dataToExport.length}\n📅 Period: ${dateRange.from} to ${dateRange.to}\n\n📂 File: ${result.filename}\n\nThe file explorer will open automatically to show your exported file.`);
+        alert(`✅ ${type.charAt(0).toUpperCase() + type.slice(1)} report exported successfully!\n\n📊 Format: ${formatName}\n📁 Records: ${result.recordCount || dataToExport.length}\n📅 Period: ${dateRange.from} to ${dateRange.to}\n\n📂 Saved to: ${result.filepath}\n\nThe file explorer will open automatically to show your exported file.`);
+      } else if (result.message === 'Export cancelled by user') {
+        console.log('Export cancelled by user');
+        // Don't show an error alert for user cancellation
       } else {
         console.error('Export failed:', result.message);
         alert(`❌ Failed to export ${type} report:\n\n${result.message}\n\nPlease try again or check the console for more details.`);
