@@ -65,11 +65,21 @@ class ReceiptTemplate {
   // Generate professional receipt PDF definition
   static generateReceiptDefinition(payment, settingsObj) {
     // Convert logo to base64
+    // Priority: business-logo.png > logo.png > icon.png
     let logoImage = null;
-    const logoPath = path.join(__dirname, '../assets/icon.png');
-    if (fs.existsSync(logoPath)) {
-      const logoBuffer = fs.readFileSync(logoPath);
-      logoImage = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+    const logoPaths = [
+      path.join(__dirname, '../assets/business-logo.png'),
+      path.join(__dirname, '../assets/logo.png'),
+      path.join(__dirname, '../assets/icon.png')
+    ];
+    
+    for (const logoPath of logoPaths) {
+      if (fs.existsSync(logoPath)) {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoImage = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+        console.log(`Using logo: ${logoPath}`);
+        break;
+      }
     }
 
     // Convert amount to words
