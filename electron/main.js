@@ -376,9 +376,6 @@ const createWindow = async () => {
       console.log('Loading fallback from:', distPath);
       await mainWindow.loadFile(distPath);
     }
-    
-    // Open DevTools in development
-    mainWindow.webContents.openDevTools();
   } else {
     console.log('Running in production mode');
     const distPath = path.join(__dirname, '../dist/index.html');

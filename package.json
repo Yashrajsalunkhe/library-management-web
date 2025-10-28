@@ -19,19 +19,8 @@
     "release": "npm run build && electron-builder --publish=always",
     "rebuild": "electron-rebuild",
     "postinstall": "electron-builder install-app-deps",
-    "start": "concurrently \"npm run dev\" \"npm run wait-and-electron\"",
-    "start:fast": "vite --host localhost --port 5173 --open",
-    "wait-and-electron": "cross-env NODE_ENV=development node scripts/wait-and-start.js",
-    "start:windows": "scripts\\start.bat",
-    "start:powershell": "powershell -ExecutionPolicy Bypass -File scripts\\start.ps1",
-    "start:linux": "chmod +x scripts/start.sh && ./scripts/start.sh",
-    "clean:windows": "rmdir /s /q dist dist-electron node_modules\\.cache 2>nul || echo Cache cleared",
-    "clean:unix": "rm -rf dist dist-electron node_modules/.cache",
-    "clean": "npm run clean:windows || npm run clean:unix",
-    "lint": "echo 'Linting not configured yet'",
-    "test": "echo 'Tests not configured yet'",
-    "test:biometric": "node test-zklib-biometric.js",
-    "start:zklib": "./start-zklib.sh"
+    "start": "concurrently \"npm run dev\" \"sleep 3 && cross-env NODE_ENV=development electron .\"",
+    "clean": "rm -rf dist dist-electron node_modules/.cache 2>/dev/null || echo 'Cache cleared'"
   },
   "keywords": [
     "library",

@@ -69,10 +69,6 @@ exports/
 reports/
 backups/
 
-# Test and utility files (keep in repository but ignore generated outputs)
-tests/outputs/
-tests/logs/
-
 # SQLite WAL and SHM files should always be ignored
 *.db-shm
 *.db-wal

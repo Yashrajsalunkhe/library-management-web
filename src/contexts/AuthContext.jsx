@@ -15,11 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored authentication
-    const storedUser = localStorage.getItem('library_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // Clear stored authentication on app start to always show login page
+    localStorage.removeItem('library_user');
     setLoading(false);
   }, []);
 
