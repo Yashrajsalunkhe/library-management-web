@@ -90,10 +90,6 @@ const LoginPage = () => {
             Sign In
           </button>
         </form>
-
-        <div className="mt-4 text-center text-sm text-gray-500">
-          <p>Default credentials: admin / admin123</p>
-        </div>
       </div>
     </div>
   );
