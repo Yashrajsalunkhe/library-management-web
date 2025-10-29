@@ -65,20 +65,28 @@ class ReceiptTemplate {
   // Generate professional receipt PDF definition
   static generateReceiptDefinition(payment, settingsObj) {
     // Convert logo to base64
-    // Priority: business-logo.png > logo.png > icon.png
+    // Priority: database logo > business-logo.png > logo.png > icon.png
     let logoImage = null;
-    const logoPaths = [
-      path.join(__dirname, '../assets/business-logo.png'),
-      path.join(__dirname, '../assets/logo.png'),
-      path.join(__dirname, '../assets/icon.png')
-    ];
     
-    for (const logoPath of logoPaths) {
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        logoImage = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-        console.log(`Using logo: ${logoPath}`);
-        break;
+    // First, check if logo is in database settings (uploaded via Settings page)
+    if (settingsObj['general.logo']) {
+      logoImage = settingsObj['general.logo'];
+      console.log('Using logo from database settings');
+    } else {
+      // Fallback to file-based logos
+      const logoPaths = [
+        path.join(__dirname, '../assets/business-logo.png'),
+        path.join(__dirname, '../assets/logo.png'),
+        path.join(__dirname, '../assets/icon.png')
+      ];
+      
+      for (const logoPath of logoPaths) {
+        if (fs.existsSync(logoPath)) {
+          const logoBuffer = fs.readFileSync(logoPath);
+          logoImage = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+          console.log(`Using logo from file: ${logoPath}`);
+          break;
+        }
       }
     }
 
