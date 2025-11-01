@@ -113,12 +113,25 @@ module.exports = (ipcMain) => {
       const userEmail = user.email || emailSetting?.value;
 
       if (!userEmail) {
-        return { success: false, message: 'No email address configured for OTP delivery' };
+        console.error('Password change OTP: No email address configured');
+        return { success: false, message: 'No email address configured for OTP delivery. Please configure your email in Settings > General Settings.' };
+      }
+
+      // Check if email configuration exists
+      if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.error('Password change OTP: Email credentials not configured in environment');
+        console.log('OTP for password change (use this since email is not configured):', otp);
+        return { 
+          success: false, 
+          message: 'Email service is not configured. Please set up email credentials in Settings > Environment Config (EMAIL_HOST, EMAIL_USER, EMAIL_PASS) and restart the application. Contact your administrator for assistance.' 
+        };
       }
 
       // Send OTP via email using the notification service
       const NotificationService = require('./notifier');
       const notifier = new NotificationService();
+      
+      console.log(`Attempting to send OTP to ${userEmail}...`);
       
       const emailResult = await notifier.sendEmail({
         to: userEmail,
@@ -140,13 +153,21 @@ module.exports = (ipcMain) => {
       });
 
       if (emailResult.success) {
+        console.log('OTP email sent successfully');
         return { success: true, message: 'OTP sent to your email address' };
       } else {
-        return { success: false, message: 'Failed to send OTP email' };
+        console.error('Failed to send OTP email:', emailResult.error);
+        return { 
+          success: false, 
+          message: `Failed to send OTP email: ${emailResult.error}. Please check your email configuration in Settings > Environment Config.` 
+        };
       }
     } catch (error) {
       console.error('Password change OTP error:', error);
-      return { success: false, message: 'Failed to generate OTP' };
+      return { 
+        success: false, 
+        message: `Failed to generate OTP: ${error.message}. Please check your email configuration.` 
+      };
     }
   });
 
@@ -188,6 +209,42 @@ module.exports = (ipcMain) => {
     } catch (error) {
       console.error('Password change error:', error);
       return { success: false, message: 'Failed to change password' };
+    }
+  });
+
+  // Username change
+  ipcMain.handle('auth:change-username', async (event, { currentPassword, newUsername, userId }) => {
+    try {
+      // Validate input
+      if (!newUsername || newUsername.trim().length < 3) {
+        return { success: false, message: 'Username must be at least 3 characters long' };
+      }
+
+      // Get the specific user by ID, fallback to any active user for backward compatibility
+      const user = userId 
+        ? get('SELECT * FROM users WHERE id = ? AND is_active = 1', [userId])
+        : get('SELECT * FROM users WHERE is_active = 1 LIMIT 1');
+      
+      if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
+        return { success: false, message: 'Current password is incorrect' };
+      }
+
+      // Check if username already exists
+      const existingUser = get('SELECT id FROM users WHERE username = ? AND id != ?', 
+        [newUsername.trim(), user.id]);
+
+      if (existingUser) {
+        return { success: false, message: 'Username already exists. Please choose a different username.' };
+      }
+
+      // Update username
+      run('UPDATE users SET username = ? WHERE id = ?', 
+        [newUsername.trim(), user.id]);
+
+      return { success: true, message: 'Username changed successfully' };
+    } catch (error) {
+      console.error('Username change error:', error);
+      return { success: false, message: 'Failed to change username' };
     }
   });
 
@@ -597,22 +654,41 @@ module.exports = (ipcMain) => {
 
   ipcMain.handle('member:update', async (event, { id, ...updates }) => {
     try {
+      // Map frontend field names to database column names
+      const fieldMapping = {
+        birthDate: 'birth_date',
+        seatNo: 'seat_no',
+        idNumber: 'id_number',
+        idDocumentType: 'id_document_type',
+        planId: 'plan_id',
+        joinDate: 'join_date',
+        endDate: 'end_date'
+      };
+
+      // Transform the updates object to use correct database column names
+      const dbUpdates = {};
+      for (const [key, value] of Object.entries(updates)) {
+        const dbColumnName = fieldMapping[key] || key;
+        dbUpdates[dbColumnName] = value;
+      }
+
       // Validate seat number if it's being updated
-      if (updates.seatNo !== undefined && updates.seatNo !== null && updates.seatNo.trim() !== '') {
-        const existingMember = get('SELECT id FROM members WHERE seat_no = ? AND id != ?', [updates.seatNo.trim(), id]);
+      if (dbUpdates.seat_no !== undefined && dbUpdates.seat_no !== null && dbUpdates.seat_no.trim() !== '') {
+        const existingMember = get('SELECT id FROM members WHERE seat_no = ? AND id != ?', [dbUpdates.seat_no.trim(), id]);
         if (existingMember) {
-          return { success: false, message: `Seat number ${updates.seatNo} is already taken` };
+          return { success: false, message: `Seat number ${dbUpdates.seat_no} is already taken` };
         }
       }
 
-      const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
-      const values = Object.values(updates);
+      const fields = Object.keys(dbUpdates).map(key => `${key} = ?`).join(', ');
+      const values = Object.values(dbUpdates);
       values.push(id);
 
       run(`UPDATE members SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, values);
       
       return { success: true };
     } catch (error) {
+      console.error('Member update error:', error);
       return { success: false, message: error.message };
     }
   });

@@ -58,12 +58,28 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const changeUsername = async (data) => {
+    try {
+      const result = await window.api.auth.changeUsername(data);
+      if (result.success) {
+        // Update user context with new username
+        const updatedUser = { ...user, username: data.newUsername };
+        setUser(updatedUser);
+        localStorage.setItem('library_user', JSON.stringify(updatedUser));
+      }
+      return result;
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  };
+
   const value = {
     user,
     login,
     logout,
     requestPasswordChangeOTP,
     changePassword,
+    changeUsername,
     loading,
     isAuthenticated: !!user
   };

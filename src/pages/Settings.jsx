@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Settings = () => {
   const { success, error } = useNotification();
-  const { requestPasswordChangeOTP, changePassword, user } = useAuth();
+  const { requestPasswordChangeOTP, changePassword, changeUsername, user } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState({
     // General Settings - Enhanced with Study Room Information
@@ -141,6 +141,14 @@ const Settings = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [otpExpiryTime, setOtpExpiryTime] = useState(null);
+
+  // Username change state
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [usernameForm, setUsernameForm] = useState({
+    currentPassword: '',
+    newUsername: ''
+  });
+  const [usernameLoading, setUsernameLoading] = useState(false);
 
   // Time format conversion helpers
   const convertTo12Hour = (time24) => {
@@ -1810,10 +1818,19 @@ const Settings = () => {
     <div className="settings-section">
       <h3>Security Configuration</h3>
       
-      {/* Password Management Section */}
+      {/* Account Management Section */}
       <div className="security-subsection">
-        <h4>Password Management</h4>
+        <h4>Account Management</h4>
+        <div className="account-info">
+          <p><strong>Current Username:</strong> {user?.username || 'N/A'}</p>
+        </div>
         <div className="action-buttons">
+          <button 
+            onClick={() => setShowUsernameModal(true)}
+            className="button button-secondary"
+          >
+            👤 Change Username
+          </button>
           <button 
             onClick={() => setShowPasswordModal(true)}
             className="button button-primary"
@@ -1822,7 +1839,7 @@ const Settings = () => {
           </button>
         </div>
         <small className="form-help">
-          Change your password with email verification for enhanced security
+          Manage your account credentials with secure verification
         </small>
       </div>
 
@@ -2528,6 +2545,130 @@ const Settings = () => {
     );
   };
 
+  // Username change helper functions
+  const handleUsernameFormChange = (field, value) => {
+    setUsernameForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const resetUsernameModal = () => {
+    setShowUsernameModal(false);
+    setUsernameForm({
+      currentPassword: '',
+      newUsername: ''
+    });
+    setUsernameLoading(false);
+  };
+
+  const handleUsernameChange = async () => {
+    try {
+      // Validate form
+      if (!usernameForm.currentPassword || !usernameForm.newUsername) {
+        error('All fields are required');
+        return;
+      }
+
+      if (usernameForm.newUsername.trim().length < 3) {
+        error('Username must be at least 3 characters long');
+        return;
+      }
+
+      if (usernameForm.newUsername === user?.username) {
+        error('New username is the same as current username');
+        return;
+      }
+
+      setUsernameLoading(true);
+
+      const result = await changeUsername({
+        currentPassword: usernameForm.currentPassword,
+        newUsername: usernameForm.newUsername.trim(),
+        userId: user?.id
+      });
+
+      if (result.success) {
+        success('Username changed successfully! Please login again with your new username.');
+        resetUsernameModal();
+      } else {
+        error(result.message || 'Failed to change username');
+      }
+    } catch (err) {
+      error('Failed to change username');
+      console.error(err);
+    } finally {
+      setUsernameLoading(false);
+    }
+  };
+
+  const renderUsernameChangeModal = () => {
+    if (!showUsernameModal) return null;
+
+    return (
+      <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && resetUsernameModal()}>
+        <div className="modal-content username-change-modal">
+          <div className="modal-header">
+            <h3>👤 Change Username</h3>
+            <button className="modal-close" onClick={resetUsernameModal}>×</button>
+          </div>
+
+          <div className="modal-body">
+            <div className="current-username">
+              <p><strong>Current Username:</strong> {user?.username}</p>
+            </div>
+
+            <div className="form-group">
+              <label>Current Password</label>
+              <input
+                type="password"
+                value={usernameForm.currentPassword}
+                onChange={(e) => handleUsernameFormChange('currentPassword', e.target.value)}
+                className="form-control"
+                placeholder="Enter your current password to verify"
+              />
+              <small className="form-help">Password verification required for security</small>
+            </div>
+
+            <div className="form-group">
+              <label>New Username</label>
+              <input
+                type="text"
+                value={usernameForm.newUsername}
+                onChange={(e) => handleUsernameFormChange('newUsername', e.target.value)}
+                className="form-control"
+                placeholder="Enter new username"
+                minLength="3"
+              />
+              <small className="form-help">Username must be at least 3 characters long</small>
+            </div>
+
+            <div className="username-warning">
+              <p>⚠️ <strong>Important:</strong> You will need to login again with your new username after changing it.</p>
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button 
+              onClick={resetUsernameModal}
+              className="button button-secondary"
+              disabled={usernameLoading}
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleUsernameChange}
+              className="button button-primary"
+              disabled={usernameLoading}
+            >
+              {usernameLoading ? 'Changing Username...' : 'Change Username'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="settings-container">
       <div className="settings-header">
@@ -2583,6 +2724,9 @@ const Settings = () => {
 
       {/* Password Change Modal */}
       {renderPasswordChangeModal()}
+
+      {/* Username Change Modal */}
+      {renderUsernameChangeModal()}
     </div>
   );
 };

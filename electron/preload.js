@@ -7,7 +7,8 @@ contextBridge.exposeInMainWorld('api', {
   auth: {
     login: (credentials) => ipcRenderer.invoke('auth:login', credentials),
     requestPasswordChangeOTP: (data) => ipcRenderer.invoke('auth:request-password-change-otp', data),
-    changePassword: (data) => ipcRenderer.invoke('auth:change-password', data)
+    changePassword: (data) => ipcRenderer.invoke('auth:change-password', data),
+    changeUsername: (data) => ipcRenderer.invoke('auth:change-username', data)
   },
 
   // Members

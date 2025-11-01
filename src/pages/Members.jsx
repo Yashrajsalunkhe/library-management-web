@@ -13,6 +13,7 @@ const Members = ({ initialAction = null }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
     status: ''
@@ -85,6 +86,9 @@ const Members = ({ initialAction = null }) => {
   };
 
   const handleEditMember = async (memberData) => {
+    if (isProcessing) return; // Prevent duplicate submissions
+    
+    setIsProcessing(true);
     try {
       const result = await window.api.member.update(memberData);
       if (result.success) {
@@ -96,11 +100,17 @@ const Members = ({ initialAction = null }) => {
         error(result.message || 'Failed to update member');
       }
     } catch (err) {
+      console.error('Error updating member:', err);
       error('Failed to update member');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleRenewMember = async (renewalData) => {
+    if (isProcessing) return; // Prevent duplicate submissions
+    
+    setIsProcessing(true);
     try {
       const result = await window.api.member.renew(renewalData);
       if (result.success) {
@@ -113,6 +123,8 @@ const Members = ({ initialAction = null }) => {
       }
     } catch (err) {
       error('Failed to renew member');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -767,10 +779,18 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
       note: member.plan_id ? 'Membership renewal' : 'New membership plan'
     }
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (isSubmitting) return; // Prevent duplicate submissions
+    
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const selectedPlan = plans.find(p => p.id === parseInt(formData.planId));
@@ -858,11 +878,18 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
           </div>
 
           <div className="modal-footer">
-            <button type="button" onClick={onClose} className="button button-secondary">
+            <button type="button" onClick={onClose} className="button button-secondary" disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="button button-success" disabled={!selectedPlan}>
-              {isNewPlan ? 'Add Plan' : 'Renew Membership'}
+            <button type="submit" className="button button-success" disabled={!selectedPlan || isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="loading-spinner"></span>
+                  Processing...
+                </>
+              ) : (
+                isNewPlan ? 'Add Plan' : 'Renew Membership'
+              )}
             </button>
           </div>
         </form>
@@ -1024,6 +1051,7 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
   });
   const [seatValidation, setSeatValidation] = useState({ isValid: true, message: '' });
   const [validatingInput, setValidatingInput] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateSeatNumber = async (seatNo) => {
     if (!seatNo || seatNo.trim() === '' || seatNo === member.seat_no) {
@@ -1089,15 +1117,21 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent duplicate submissions
     
     // Check seat number validation before submitting
     if (!seatValidation.isValid && formData.seatNo.trim() !== '') {
       return;
     }
     
-    onSubmit(formData);
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1300,11 +1334,18 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
           </div>
 
           <div className="modal-footer">
-            <button type="button" onClick={onClose} className="button button-secondary">
+            <button type="button" onClick={onClose} className="button button-secondary" disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="button button-primary">
-              ✏️ Update Member
+            <button type="submit" className="button button-primary" disabled={isSubmitting || (!seatValidation.isValid && formData.seatNo.trim() !== '')}>
+              {isSubmitting ? (
+                <>
+                  <span className="loading-spinner"></span>
+                  Updating...
+                </>
+              ) : (
+                <>✏️ Update Member</>
+              )}
             </button>
           </div>
         </form>
