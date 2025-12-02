@@ -482,6 +482,7 @@ const Members = ({ initialAction = null }) => {
 
 // Add Member Modal Component
 const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
+  const today = new Date().toISOString().split('T')[0];
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -491,7 +492,10 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
     address: '',
     idNumber: '',
     idDocumentType: '',
-    seatNo: ''
+    seatNo: '',
+    planId: '',
+    joinDate: today,
+    endDate: today
   });
   const [nextSeatNumber, setNextSeatNumber] = useState('');
   const [seatValidation, setSeatValidation] = useState({ isValid: true, message: '' });
@@ -582,14 +586,7 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
       return;
     }
 
-    // Add default values for plan-related fields when no plan is assigned
-    const memberDataWithDefaults = {
-      ...formData,
-      planId: null,
-      joinDate: null,
-      endDate: null
-    };
-    onSubmit(memberDataWithDefaults);
+    onSubmit(formData);
   };
 
   return (

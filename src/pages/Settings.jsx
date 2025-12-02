@@ -1566,21 +1566,21 @@ const Settings = () => {
       return;
     }
 
-    // Convert duration to months based on unit
-    let durationMonths = parseInt(newPlan.duration);
+    // Convert duration to days based on unit
+    let durationDays = parseInt(newPlan.duration);
     if (newPlan.durationUnit === 'days') {
-      durationMonths = 0; // For daily plans
+      durationDays = durationDays; // Already in days
+    } else if (newPlan.durationUnit === 'months') {
+      durationDays = durationDays * 30;
     } else if (newPlan.durationUnit === 'years') {
-      durationMonths = durationMonths * 12;
+      durationDays = durationDays * 365;
     }
 
     const planData = {
       name: newPlan.name,
-      duration_months: durationMonths,
+      duration_days: durationDays,
       price: parseFloat(newPlan.amount),
-      description: `${newPlan.duration} ${newPlan.durationUnit} plan`,
-      seat_access: true,
-      book_limit: 0
+      description: `${newPlan.duration} ${newPlan.durationUnit} plan`
     };
 
     try {

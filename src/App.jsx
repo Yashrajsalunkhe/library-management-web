@@ -5,6 +5,7 @@ import LoginPage from './components/LoginPage';
 import DiagnosticPage from './components/DiagnosticPage';
 import Layout from './components/Layout';
 import NotificationContainer from './components/NotificationContainer';
+import InitialSetup from './pages/InitialSetup';
 import './styles/globals.css';
 
 // Lazy load pages
@@ -52,6 +53,11 @@ const AppContent = () => {
   // Show diagnostic page regardless of auth status
   if (currentRoute === '/diagnostic') {
     return <DiagnosticPage />;
+  }
+
+  // Show initial setup page regardless of auth status
+  if (currentRoute === '/setup' || currentRoute === '/initial-setup') {
+    return <InitialSetup />;
   }
 
   if (!isAuthenticated) {

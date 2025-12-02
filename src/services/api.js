@@ -146,7 +146,7 @@ export const api = {
     },
     member: {
         list: async (filters = {}) => {
-            let query = supabase.from('members').select('*, library_plans(name)');
+            let query = supabase.from('members').select('*');
 
             if (filters.search) {
                 query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
@@ -156,6 +156,29 @@ export const api = {
             }
 
             const { data, error } = await query;
+            
+            if (error) return handleResponse(null, error);
+            
+            // Fetch plan names separately if needed
+            if (data && data.length > 0) {
+                const planIds = [...new Set(data.map(m => m.plan_id).filter(Boolean))];
+                if (planIds.length > 0) {
+                    const { data: plans } = await supabase
+                        .from('membership_plans')
+                        .select('id, name')
+                        .in('id', planIds);
+                    
+                    if (plans) {
+                        const planMap = Object.fromEntries(plans.map(p => [p.id, p]));
+                        data.forEach(member => {
+                            if (member.plan_id && planMap[member.plan_id]) {
+                                member.membership_plans = planMap[member.plan_id];
+                            }
+                        });
+                    }
+                }
+            }
+            
             return handleResponse(data, error);
         },
         add: async (memberData) => {
@@ -163,11 +186,11 @@ export const api = {
             const { planId, birthDate, idNumber, idDocumentType, seatNo, joinDate, endDate, ...rest } = memberData;
             const dbData = { 
                 ...rest, 
-                plan_id: planId,
-                birth_date: birthDate,
-                id_number: idNumber,
-                id_document_type: idDocumentType,
-                seat_no: seatNo,
+                plan_id: planId || null, // Convert empty string to null
+                birth_date: birthDate || null,
+                id_number: idNumber || null,
+                id_document_type: idDocumentType || null,
+                seat_no: seatNo || null,
                 join_date: joinDate,
                 end_date: endDate
             };
@@ -184,11 +207,11 @@ export const api = {
             const { id, planId, birthDate, idNumber, idDocumentType, seatNo, joinDate, endDate, ...rest } = memberData;
             const dbData = { 
                 ...rest, 
-                plan_id: planId,
-                birth_date: birthDate,
-                id_number: idNumber,
-                id_document_type: idDocumentType,
-                seat_no: seatNo,
+                plan_id: planId || null, // Convert empty string to null
+                birth_date: birthDate || null,
+                id_number: idNumber || null,
+                id_document_type: idDocumentType || null,
+                seat_no: seatNo || null,
                 join_date: joinDate,
                 end_date: endDate
             };
@@ -356,7 +379,7 @@ export const api = {
 
                 // 1. Get plan details
                 const { data: plan, error: planError } = await supabase
-                    .from('library_plans')
+                    .from('membership_plans')
                     .select('*')
                     .eq('id', planId)
                     .single();
@@ -368,7 +391,7 @@ export const api = {
                 // 2. Calculate new dates
                 const joinDate = new Date();
                 const endDate = new Date();
-                endDate.setMonth(endDate.getMonth() + plan.duration_months);
+                endDate.setDate(endDate.getDate() + plan.duration_days);
 
                 // 3. Update member
                 const { error: updateError } = await supabase
@@ -732,14 +755,14 @@ export const api = {
     plan: {
         list: async () => {
             const { data, error } = await supabase
-                .from('library_plans')
+                .from('membership_plans')
                 .select('*')
                 .order('price', { ascending: true });
             return handleResponse(data, error);
         },
         add: async (planData) => {
             const { data, error } = await supabase
-                .from('library_plans')
+                .from('membership_plans')
                 .insert([planData])
                 .select()
                 .single();
@@ -748,7 +771,7 @@ export const api = {
         update: async (planData) => {
             const { id, ...rest } = planData;
             const { data, error } = await supabase
-                .from('library_plans')
+                .from('membership_plans')
                 .update(rest)
                 .eq('id', id)
                 .select()
@@ -757,7 +780,7 @@ export const api = {
         },
         delete: async (id) => {
             const { error } = await supabase
-                .from('library_plans')
+                .from('membership_plans')
                 .delete()
                 .eq('id', id);
             return handleResponse(null, error);
