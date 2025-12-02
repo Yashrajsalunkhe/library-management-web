@@ -32,7 +32,36 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: result.message };
       }
     } catch (error) {
-      return { success: false, message: error.message };
+      console.error('AuthContext login error:', error);
+      
+      // Handle different types of errors
+      let userMessage = error.message;
+      if (error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED')) {
+        userMessage = 'Unable to connect to the authentication service. Please check your internet connection or try again later.';
+      } else if (error.message.includes('network')) {
+        userMessage = 'Network error occurred. Please try again.';
+      }
+      
+      return { success: false, message: userMessage };
+    }
+  };
+
+  const signUp = async (credentials) => {
+    try {
+      const result = await api.auth.signUp(credentials);
+      return result;
+    } catch (error) {
+      console.error('AuthContext signUp error:', error);
+      
+      // Handle different types of errors
+      let userMessage = error.message;
+      if (error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED')) {
+        userMessage = 'Unable to connect to the authentication service. Please check your internet connection or try again later.';
+      } else if (error.message.includes('network')) {
+        userMessage = 'Network error occurred. Please try again.';
+      }
+      
+      return { success: false, message: userMessage };
     }
   };
 
@@ -77,6 +106,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     login,
+    signUp,
     logout,
     requestPasswordChangeOTP,
     changePassword,

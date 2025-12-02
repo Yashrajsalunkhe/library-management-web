@@ -11,28 +11,34 @@ const handleResponse = (data, error) => {
 
 export const api = {
     auth: {
-        login: async ({ username, password }) => {
+        login: async ({ email, password }) => {
             try {
-                // 1. Get email from username (since Supabase Auth uses email)
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('email')
-                    .eq('username', username)
-                    .single();
+                let loginEmail = email;
 
-                if (profileError || !profile) {
-                    return { success: false, message: 'User not found' };
+                // Check if input is email or username
+                if (!email.includes('@')) {
+                    // It's a username, get email from profile
+                    const { data: profile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('email')
+                        .eq('username', email)
+                        .single();
+
+                    if (profileError || !profile) {
+                        return { success: false, message: 'User not found' };
+                    }
+                    loginEmail = profile.email;
                 }
 
-                // 2. Sign in with email and password
+                // Sign in with email and password
                 const { data, error } = await supabase.auth.signInWithPassword({
-                    email: profile.email,
+                    email: loginEmail,
                     password
                 });
 
                 if (error) return { success: false, message: error.message };
 
-                // 3. Get full profile details
+                // Get full profile details
                 const { data: fullProfile, error: fullProfileError } = await supabase
                     .from('profiles')
                     .select('*')
@@ -71,6 +77,71 @@ export const api = {
                 .eq('id', user.id);
 
             return handleResponse(null, error);
+        },
+        signUp: async ({ email, password, username, fullName }) => {
+            try {
+                // Test connection first
+                console.log('Testing Supabase connection...');
+                
+                // 1. Check if username already exists
+                const { data: existingProfile, error: checkError } = await supabase
+                    .from('profiles')
+                    .select('username')
+                    .eq('username', username)
+                    .single();
+
+                // Handle connection errors
+                if (checkError && checkError.message && checkError.message.includes('Failed to fetch')) {
+                    console.error('Network error during username check:', checkError);
+                    return { 
+                        success: false, 
+                        message: 'Unable to connect to the database. Please check your internet connection and try again.' 
+                    };
+                }
+
+                if (existingProfile) {
+                    return { success: false, message: 'Username already exists' };
+                }
+
+                // 2. Sign up with Supabase Auth
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            username,
+                            full_name: fullName,
+                            role: 'admin'
+                        }
+                    }
+                });
+
+                if (error) {
+                    console.error('Supabase auth error:', error);
+                    if (error.message.includes('Failed to fetch')) {
+                        return { 
+                            success: false, 
+                            message: 'Unable to connect to the authentication service. Please check your connection and try again.' 
+                        };
+                    }
+                    return { success: false, message: error.message };
+                }
+
+                return { 
+                    success: true, 
+                    user: data.user,
+                    message: 'Account created successfully! Please check your email to verify your account.'
+                };
+            } catch (err) {
+                console.error('API signUp error:', err);
+                if (err.message.includes('Failed to fetch') || err.message.includes('network')) {
+                    return { 
+                        success: false, 
+                        message: 'Connection error. Please check your internet connection and try again.' 
+                    };
+                }
+                return { success: false, message: err.message };
+            }
         },
     },
     member: {

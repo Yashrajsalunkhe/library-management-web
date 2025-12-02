@@ -1,7 +1,8 @@
-import { useState, Suspense, lazy } from 'react';
+import { useState, Suspense, lazy, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import LoginPage from './components/LoginPage';
+import DiagnosticPage from './components/DiagnosticPage';
 import Layout from './components/Layout';
 import NotificationContainer from './components/NotificationContainer';
 import './styles/globals.css';
@@ -27,6 +28,17 @@ const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pageProps, setPageProps] = useState({});
+  const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
+
+  // Simple routing
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentRoute(window.location.pathname);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   if (loading) {
     return (
@@ -35,6 +47,11 @@ const AppContent = () => {
         Loading application...
       </div>
     );
+  }
+
+  // Show diagnostic page regardless of auth status
+  if (currentRoute === '/diagnostic') {
+    return <DiagnosticPage />;
   }
 
   if (!isAuthenticated) {
