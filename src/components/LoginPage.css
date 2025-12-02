@@ -8,10 +8,12 @@
   flex-direction: column;
   font-family: 'Montserrat', sans-serif;
   height: 100vh;
-  margin: -20px 0 50px;
+  margin: 0;
+  position: relative;
+  padding: 20px;
 }
 
-.back-to-docs-button {
+.login-page-wrapper .back-to-docs-button {
   position: absolute;
   top: 20px;
   left: 20px;
@@ -28,11 +30,11 @@
   transition: background-color 0.3s ease;
 }
 
-.back-to-docs-button:hover {
+.login-page-wrapper .back-to-docs-button:hover {
   background-color: rgba(255, 255, 255, 1);
 }
 
-* {
+.login-page-wrapper * {
   box-sizing: border-box;
 }
 
@@ -117,43 +119,44 @@
   border-radius: 4px;
 }
 
-.container {
+.login-page-wrapper .container {
   background-color: #fff;
   border-radius: 10px;
   box-shadow: 0 14px 28px rgba(0,0,0,0.25), 
         0 10px 10px rgba(0,0,0,0.22);
   position: relative;
   overflow: hidden;
-  width: 768px;
+  width: min(90vw, 1000px);
   max-width: 100%;
-  min-height: 480px;
+  min-height: min(80vh, 600px);
+  height: 600px;
 }
 
-.form-container {
+.login-page-wrapper .form-container {
   position: absolute;
   top: 0;
   height: 100%;
   transition: all 0.6s ease-in-out;
 }
 
-.sign-in-container {
+.login-page-wrapper .sign-in-container {
   left: 0;
   width: 50%;
   z-index: 2;
 }
 
-.container.right-panel-active .sign-in-container {
+.login-page-wrapper .container.right-panel-active .sign-in-container {
   transform: translateX(100%);
 }
 
-.sign-up-container {
+.login-page-wrapper .sign-up-container {
   left: 0;
   width: 50%;
   opacity: 0;
   z-index: 1;
 }
 
-.container.right-panel-active .sign-up-container {
+.login-page-wrapper .container.right-panel-active .sign-up-container {
   transform: translateX(100%);
   opacity: 1;
   z-index: 5;
@@ -172,7 +175,7 @@
   }
 }
 
-.overlay-container {
+.login-page-wrapper .overlay-container {
   position: absolute;
   top: 0;
   left: 50%;
@@ -183,11 +186,11 @@
   z-index: 100;
 }
 
-.container.right-panel-active .overlay-container{
+.login-page-wrapper .container.right-panel-active .overlay-container{
   transform: translateX(-100%);
 }
 
-.overlay {
+.login-page-wrapper .overlay {
   background: #FF416C;
   background: -webkit-linear-gradient(to right, #FF4B2B, #FF416C);
   background: linear-gradient(to right, #FF4B2B, #FF416C);
@@ -203,11 +206,11 @@
   transition: transform 0.6s ease-in-out;
 }
 
-.container.right-panel-active .overlay {
+.login-page-wrapper .container.right-panel-active .overlay {
   transform: translateX(50%);
 }
 
-.overlay-panel {
+.login-page-wrapper .overlay-panel {
   position: absolute;
   display: flex;
   align-items: center;
@@ -222,28 +225,28 @@
   transition: transform 0.6s ease-in-out;
 }
 
-.overlay-left {
+.login-page-wrapper .overlay-left {
   transform: translateX(-20%);
 }
 
-.container.right-panel-active .overlay-left {
+.login-page-wrapper .container.right-panel-active .overlay-left {
   transform: translateX(0);
 }
 
-.overlay-right {
+.login-page-wrapper .overlay-right {
   right: 0;
   transform: translateX(0);
 }
 
-.container.right-panel-active .overlay-right {
+.login-page-wrapper .container.right-panel-active .overlay-right {
   transform: translateX(20%);
 }
 
-.social-container {
+.login-page-wrapper .social-container {
   margin: 20px 0;
 }
 
-.social-container a {
+.login-page-wrapper .social-container a {
   border: 1px solid #DDDDDD;
   border-radius: 50%;
   display: inline-flex;
@@ -256,27 +259,41 @@
   color: #333;
 }
 
-footer {
-  background-color: #222;
-  color: #fff;
-  font-size: 14px;
-  bottom: 0;
-  position: fixed;
-  left: 0;
-  right: 0;
-  text-align: center;
-  z-index: 999;
-}
-
-footer p {
-  margin: 10px 0;
-}
-
-footer i {
-  color: red;
-}
-
-footer a {
-  color: #3c97bf;
-  text-decoration: none;
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .login-page-wrapper .container {
+    width: 95vw;
+    min-height: 70vh;
+    height: auto;
+  }
+  
+  .login-page-wrapper .form-container {
+    width: 100% !important;
+    position: static;
+  }
+  
+  .login-page-wrapper .sign-in-container,
+  .login-page-wrapper .sign-up-container {
+    width: 100% !important;
+    left: 0 !important;
+    opacity: 1 !important;
+    z-index: 1 !important;
+    transform: none !important;
+  }
+  
+  .login-page-wrapper .overlay-container {
+    display: none;
+  }
+  
+  .login-page-wrapper .container.right-panel-active .sign-up-container {
+    display: block;
+  }
+  
+  .login-page-wrapper .container.right-panel-active .sign-in-container {
+    display: none;
+  }
+  
+  .login-page-wrapper .container:not(.right-panel-active) .sign-up-container {
+    display: none;
+  }
 }

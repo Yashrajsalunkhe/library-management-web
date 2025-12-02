@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
+import './LoginPage.css';
 
-const LoginPage = () => {
-  const [isSignUp, setIsSignUp] = useState(true);
+const LoginPage = ({ initialMode = null, onBackToDocumentation = null }) => {
+  const [isRightPanelActive, setIsRightPanelActive] = useState(initialMode === 'signup');
   const [credentials, setCredentials] = useState({
     email: '',
     password: '',
@@ -14,26 +15,36 @@ const LoginPage = () => {
   const { login, signUp } = useAuth();
   const { error, success } = useNotification();
 
-  const handleSubmit = async (e) => {
+  const handleSignUpSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const result = await signUp(credentials);
-        if (result.success) {
-          success('Account created successfully! Please check your email to verify your account.');
-          setIsSignUp(false);
-        } else {
-          console.error('Sign up failed:', result.message);
-          error(result.message || 'Sign up failed');
-        }
+      const result = await signUp(credentials);
+      if (result.success) {
+        success('Account created successfully! Please check your email to verify your account.');
+        setIsRightPanelActive(false);
       } else {
-        const result = await login(credentials);
-        if (!result.success) {
-          console.error('Login failed:', result.message);
-          error(result.message || 'Login failed');
-        }
+        console.error('Sign up failed:', result.message);
+        error(result.message || 'Sign up failed');
+      }
+    } catch (err) {
+      console.error('Authentication error:', err);
+      error(`Error: ${err.message || 'An unexpected error occurred'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignInSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const result = await login(credentials);
+      if (!result.success) {
+        console.error('Login failed:', result.message);
+        error(result.message || 'Login failed');
       }
     } catch (err) {
       console.error('Authentication error:', err);
@@ -50,144 +61,120 @@ const LoginPage = () => {
     }));
   };
 
+  useEffect(() => {
+    if (initialMode === 'signup') {
+      setIsRightPanelActive(true);
+    } else if (initialMode === 'login') {
+      setIsRightPanelActive(false);
+    }
+  }, [initialMode]);
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '1rem'
-    }}>
-      <div className="card" style={{
-        width: '100%',
-        maxWidth: '420px',
-        padding: '2.5rem',
-        backdropFilter: 'blur(20px)',
-        backgroundColor: 'rgba(255, 255, 255, 0.9)'
-      }}>
-        <div className="text-center mb-4">
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📚</div>
-          <h1 className="text-xl font-semibold mb-2" style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem' }}>
-            {isSignUp ? 'Create Account' : 'Welcome Back'}
-          </h1>
-          <p className="text-gray-600">
-            {isSignUp ? 'Create your Library Management System account' : 'Sign in to Library Management System'}
-          </p>
-        </div>
+    <div className="login-page-wrapper">
+      {onBackToDocumentation && (
+        <button
+          type="button"
+          onClick={onBackToDocumentation}
+          className="back-to-docs-button"
+        >
+          ← Back to Documentation
+        </button>
+      )}
 
-        <div className="flex mb-6" style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '4px' }}>
-          <button
-            type="button"
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              isSignUp 
-                ? 'bg-white text-blue-600 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setIsSignUp(true)}
-          >
-            Create Account
-          </button>
-          <button
-            type="button"
-            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-              !isSignUp 
-                ? 'bg-white text-blue-600 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setIsSignUp(false)}
-          >
-            Sign In
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          {isSignUp && (
-            <>
-              <div className="form-group">
-                <label className="form-label" htmlFor="fullName">
-                  Full Name
-                </label>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  className="input"
-                  value={credentials.fullName}
-                  onChange={handleChange}
-                  required
-                  autoFocus
-                  placeholder="Enter your full name"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="username">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  className="input"
-                  value={credentials.username}
-                  onChange={handleChange}
-                  required
-                  placeholder="Choose a username"
-                />
-              </div>
-            </>
-          )}
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="email">
-              {isSignUp ? 'Email' : 'Email/Username'}
-            </label>
-            <input
-              id="email"
+      <div className={`container ${isRightPanelActive ? 'right-panel-active' : ''}`} id="container">
+        <div className="form-container sign-up-container">
+          <form onSubmit={handleSignUpSubmit}>
+            <h1>Create Account</h1>
+            <div className="social-container">
+              <a href="#" className="social"><i className="fab fa-facebook-f"></i></a>
+              <a href="#" className="social"><i className="fab fa-google-plus-g"></i></a>
+              <a href="#" className="social"><i className="fab fa-linkedin-in"></i></a>
+            </div>
+            <span>or use your email for registration</span>
+            <input 
+              type="text" 
+              placeholder="Name" 
+              name="fullName"
+              value={credentials.fullName}
+              onChange={handleChange}
+              required
+              autoComplete="name"
+            />
+            <input 
+              type="email" 
+              placeholder="Email" 
               name="email"
-              type={isSignUp ? "email" : "text"}
-              className="input"
               value={credentials.email}
               onChange={handleChange}
               required
-              autoFocus={!isSignUp}
-              placeholder={isSignUp ? "Enter your email address" : "Enter your email or username"}
+              autoComplete="email"
             />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
+            <input 
+              type="password" 
+              placeholder="Password" 
               name="password"
-              type="password"
-              className="input"
               value={credentials.password}
               onChange={handleChange}
               required
-              placeholder={isSignUp ? "Create a secure password" : "Enter your password"}
+              autoComplete="new-password"
             />
+            <button type="submit" disabled={loading}>
+              {loading ? 'Creating Account...' : 'Sign Up'}
+            </button>
+          </form>
+        </div>
+        
+        <div className="form-container sign-in-container">
+          <form onSubmit={handleSignInSubmit}>
+            <h1>Sign in</h1>
+            <div className="social-container">
+              <a href="#" className="social"><i className="fab fa-facebook-f"></i></a>
+              <a href="#" className="social"><i className="fab fa-google-plus-g"></i></a>
+              <a href="#" className="social"><i className="fab fa-linkedin-in"></i></a>
+            </div>
+            <span>or use your account</span>
+            <input 
+              type="email" 
+              placeholder="Email" 
+              name="email"
+              value={credentials.email}
+              onChange={handleChange}
+              required
+              autoComplete="email"
+            />
+            <input 
+              type="password" 
+              placeholder="Password" 
+              name="password"
+              value={credentials.password}
+              onChange={handleChange}
+              required
+              autoComplete="current-password"
+            />
+            <a href="#">Forgot your password?</a>
+            <button type="submit" disabled={loading}>
+              {loading ? 'Signing In...' : 'Sign In'}
+            </button>
+          </form>
+        </div>
+        
+        <div className="overlay-container">
+          <div className="overlay">
+            <div className="overlay-panel overlay-left">
+              <h1>Welcome Back!</h1>
+              <p>To keep connected with us please login with your personal info</p>
+              <button className="ghost" onClick={() => setIsRightPanelActive(false)}>
+                Sign In
+              </button>
+            </div>
+            <div className="overlay-panel overlay-right">
+              <h1>Hello, Friend!</h1>
+              <p>Enter your personal details and start journey with us</p>
+              <button className="ghost" onClick={() => setIsRightPanelActive(true)}>
+                Sign Up
+              </button>
+            </div>
           </div>
-
-          <button
-            type="submit"
-            className="button button-primary"
-            style={{ width: '100%', marginTop: '1rem', padding: '0.875rem' }}
-            disabled={loading}
-          >
-            {loading && <div className="loading-spinner" style={{ width: '16px', height: '16px', borderTopColor: 'white' }} />}
-            {isSignUp ? 'Create Account' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="text-center mt-4 text-sm text-gray-600">
-          {isSignUp ? (
-            <p>Already have an account? <button type="button" className="text-blue-600 hover:text-blue-800" onClick={() => setIsSignUp(false)}>Sign in here</button></p>
-          ) : (
-            <p>Don't have an account? <button type="button" className="text-blue-600 hover:text-blue-800" onClick={() => setIsSignUp(true)}>Create one here</button></p>
-          )}
         </div>
       </div>
     </div>
