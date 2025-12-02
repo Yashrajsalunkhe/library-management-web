@@ -6,6 +6,7 @@ import DiagnosticPage from './components/DiagnosticPage';
 import Layout from './components/Layout';
 import NotificationContainer from './components/NotificationContainer';
 import InitialSetup from './pages/InitialSetup';
+import DocumentationLanding from './pages/DocumentationLanding';
 import './styles/globals.css';
 
 // Lazy load pages
@@ -30,6 +31,8 @@ const AppContent = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pageProps, setPageProps] = useState({});
   const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
+  const [showDocumentation, setShowDocumentation] = useState(!isAuthenticated);
+  const [authMode, setAuthMode] = useState(null); // 'login' or 'signup'
 
   // Simple routing
   useEffect(() => {
@@ -40,6 +43,24 @@ const AppContent = () => {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // Handle authentication state changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      setShowDocumentation(false);
+      setAuthMode(null);
+    }
+  }, [isAuthenticated]);
+
+  const handleNavigateToAuth = (mode) => {
+    setAuthMode(mode);
+    setShowDocumentation(false);
+  };
+
+  const handleBackToDocumentation = () => {
+    setShowDocumentation(true);
+    setAuthMode(null);
+  };
 
   if (loading) {
     return (
@@ -60,8 +81,17 @@ const AppContent = () => {
     return <InitialSetup />;
   }
 
+  // Show documentation landing page when not authenticated and no specific auth mode
+  if (!isAuthenticated && showDocumentation && !authMode) {
+    return <DocumentationLanding onNavigateToAuth={handleNavigateToAuth} />;
+  }
+
+  // Show login/signup page when not authenticated and auth mode is set
   if (!isAuthenticated) {
-    return <LoginPage />;
+    return <LoginPage 
+      initialMode={authMode} 
+      onBackToDocumentation={handleBackToDocumentation} 
+    />;
   }
 
   const handlePageChange = (page, props = {}) => {
