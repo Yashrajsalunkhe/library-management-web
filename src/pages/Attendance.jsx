@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
+import { api } from '../services/api';
 
 const Attendance = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -29,7 +30,7 @@ const Attendance = () => {
     loadMembers();
     loadAttendance();
     loadStats();
-    
+
     // Set up auto check-out interval
     const autoCheckOutInterval = setInterval(() => {
       handleAutoCheckOut();
@@ -45,7 +46,7 @@ const Attendance = () => {
 
   const loadMembers = async () => {
     try {
-      const result = await window.api.member.list();
+      const result = await api.member.list();
       if (result.success) {
         setMembers(result.data);
       }
@@ -56,7 +57,7 @@ const Attendance = () => {
 
   const loadAttendance = async () => {
     try {
-      const result = await window.api.attendance.list(filters);
+      const result = await api.attendance.list(filters);
       if (result.success) {
         setAttendanceRecords(result.data);
       }
@@ -67,22 +68,22 @@ const Attendance = () => {
 
   const loadStats = async () => {
     try {
-      const todayResult = await window.api.attendance.today();
-      const statsResult = await window.api.dashboard.stats();
-      
+      const todayResult = await api.attendance.today();
+      const statsResult = await api.dashboard.stats();
+
       // Get monthly records by calling API with monthly filter
       const currentDate = new Date();
       const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-      
+
       const monthlyFilter = {
         dateFrom: firstDayOfMonth.toISOString().split('T')[0],
         dateTo: lastDayOfMonth.toISOString().split('T')[0]
       };
-      
-      const monthlyResult = await window.api.attendance.list(monthlyFilter);
+
+      const monthlyResult = await api.attendance.list(monthlyFilter);
       const monthlyRecords = monthlyResult.success ? monthlyResult.data.length : 0;
-      
+
       if (todayResult.success && statsResult.success) {
         setStats({
           totalRecords: monthlyRecords,
@@ -111,7 +112,7 @@ const Attendance = () => {
     }
 
     try {
-      const result = await window.api.attendance.add(newAttendance);
+      const result = await api.attendance.add(newAttendance);
       if (result.success) {
         setShowAddModal(false);
         setNewAttendance({ memberId: '', checkIn: '', checkOut: '', source: 'manual' });
@@ -128,7 +129,7 @@ const Attendance = () => {
 
   const handleQuickCheckIn = async (memberId) => {
     try {
-      const result = await window.api.attendance.checkin({ memberId, source: 'manual' });
+      const result = await api.attendance.checkin({ memberId, source: 'manual' });
       if (result.success) {
         loadAttendance();
         loadStats();
@@ -143,7 +144,7 @@ const Attendance = () => {
 
   const handleQuickCheckOut = async (memberId) => {
     try {
-      const result = await window.api.attendance.checkout({ memberId });
+      const result = await api.attendance.checkout({ memberId });
       if (result.success) {
         loadAttendance();
         loadStats();
@@ -162,18 +163,18 @@ const Attendance = () => {
       const autoCheckOutHours = 12; // Default value, can be fetched from settings
       const cutoffTime = new Date();
       cutoffTime.setHours(cutoffTime.getHours() - autoCheckOutHours);
-      
+
       // Get active attendance records that are older than cutoff time
-      const activeRecords = attendanceRecords.filter(record => 
-        !record.check_out && 
+      const activeRecords = attendanceRecords.filter(record =>
+        !record.check_out &&
         new Date(record.check_in) < cutoffTime
       );
 
       // Auto check-out these records
       for (const record of activeRecords) {
-        await window.api.attendance.checkout({ 
+        await api.attendance.checkout({
           memberId: record.member_id,
-          autoCheckOut: true 
+          autoCheckOut: true
         });
       }
 
@@ -212,14 +213,14 @@ const Attendance = () => {
           <p className="page-subtitle">Track and manage member attendance records</p>
         </div>
         <div className="page-actions">
-          <button 
-            onClick={() => setShowQuickActions(!showQuickActions)} 
+          <button
+            onClick={() => setShowQuickActions(!showQuickActions)}
             className="button button-secondary"
           >
             Quick Actions
           </button>
-          <button 
-            onClick={() => setShowAddModal(true)} 
+          <button
+            onClick={() => setShowAddModal(true)}
             className="button button-primary"
           >
             + Add Attendance
@@ -266,13 +267,13 @@ const Attendance = () => {
                   <span className="member-plan">{member.plan_name || 'No Plan'}</span>
                 </div>
                 <div className="quick-actions">
-                  <button 
+                  <button
                     onClick={() => handleQuickCheckIn(member.id)}
                     className="button button-sm button-success"
                   >
                     Check In
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleQuickCheckOut(member.id)}
                     className="button button-sm button-warning"
                   >
@@ -291,14 +292,14 @@ const Attendance = () => {
           <h3>Filter Attendance</h3>
           <p className="card-subtitle">Filter attendance records by member, date range, or source</p>
         </div>
-        
+
         <div className="form-grid">
           <div className="form-group">
             <label htmlFor="member-filter">Member</label>
-            <select 
+            <select
               id="member-filter"
-              value={filters.memberId} 
-              onChange={(e) => handleFilterChange('memberId', e.target.value)} 
+              value={filters.memberId}
+              onChange={(e) => handleFilterChange('memberId', e.target.value)}
               className="form-control"
             >
               <option value="">All Members</option>
@@ -311,30 +312,30 @@ const Attendance = () => {
           </div>
           <div className="form-group">
             <label htmlFor="date-from">From Date</label>
-            <input 
+            <input
               id="date-from"
-              type="date" 
-              value={filters.dateFrom} 
-              onChange={(e) => handleFilterChange('dateFrom', e.target.value)} 
-              className="form-control" 
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+              className="form-control"
             />
           </div>
           <div className="form-group">
             <label htmlFor="date-to">To Date</label>
-            <input 
+            <input
               id="date-to"
-              type="date" 
-              value={filters.dateTo} 
-              onChange={(e) => handleFilterChange('dateTo', e.target.value)} 
-              className="form-control" 
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+              className="form-control"
             />
           </div>
           <div className="form-group">
             <label htmlFor="source-filter">Source</label>
-            <select 
+            <select
               id="source-filter"
-              value={filters.source} 
-              onChange={(e) => handleFilterChange('source', e.target.value)} 
+              value={filters.source}
+              onChange={(e) => handleFilterChange('source', e.target.value)}
               className="form-control"
             >
               <option value="">All Sources</option>
@@ -343,7 +344,7 @@ const Attendance = () => {
             </select>
           </div>
         </div>
-        
+
         <div className="form-actions">
           <button onClick={clearFilters} className="button button-secondary">
             Clear All Filters
@@ -364,7 +365,7 @@ const Attendance = () => {
             Showing {attendanceRecords.length} record{attendanceRecords.length !== 1 ? 's' : ''}
           </p>
         </div>
-        
+
         <div className="table-wrapper">
           <table className="table">
             <thead>
@@ -385,8 +386,8 @@ const Attendance = () => {
                     <div>
                       <h3>No attendance records found</h3>
                       <p>Try adjusting your filters or add a new attendance record</p>
-                      <button 
-                        onClick={() => setShowAddModal(true)} 
+                      <button
+                        onClick={() => setShowAddModal(true)}
                         className="button button-primary"
                       >
                         Add First Record
@@ -398,9 +399,9 @@ const Attendance = () => {
                 attendanceRecords.map(record => {
                   const checkIn = record.check_in ? new Date(record.check_in) : null;
                   const checkOut = record.check_out ? new Date(record.check_out) : null;
-                  const duration = checkIn && checkOut ? 
+                  const duration = checkIn && checkOut ?
                     Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 100)) / 10 : null;
-                  
+
                   return (
                     <tr key={record.id}>
                       <td>
@@ -415,7 +416,7 @@ const Attendance = () => {
                         {duration ? `${duration}h` : record.check_out ? '-' : 'Active'}
                       </td>
                       <td>
-                        <span 
+                        <span
                           className="source-badge"
                           style={{ backgroundColor: getSourceColor(record.source) }}
                         >
@@ -430,7 +431,7 @@ const Attendance = () => {
                       <td>
                         <div className="table-actions">
                           {!record.check_out && (
-                            <button 
+                            <button
                               onClick={() => handleQuickCheckOut(record.member_id)}
                               className="button button-sm button-warning"
                               title="Check Out"
@@ -452,24 +453,25 @@ const Attendance = () => {
       {/* Add Attendance Modal */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal payment-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Add Attendance Record</h3>
-              <button 
+              <h3 className="modal-title">Add Attendance Record</h3>
+              <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="modal-close"
+                className="modal-close-button"
               >
                 ×
               </button>
             </div>
-            
+
             <div className="modal-body">
               <div className="form-group">
                 <label htmlFor="attendance-member">Member *</label>
-                <select 
+                <select
                   id="attendance-member"
-                  value={newAttendance.memberId} 
-                  onChange={(e) => setNewAttendance(prev => ({ ...prev, memberId: e.target.value }))} 
+                  value={newAttendance.memberId}
+                  onChange={(e) => setNewAttendance(prev => ({ ...prev, memberId: e.target.value }))}
                   className="form-control"
                   required
                 >
@@ -481,39 +483,39 @@ const Attendance = () => {
                   ))}
                 </select>
               </div>
-              
+
               <div className="form-grid-2">
                 <div className="form-group">
                   <label htmlFor="attendance-checkin">Check In</label>
-                  <input 
+                  <input
                     id="attendance-checkin"
-                    type="datetime-local" 
-                    value={newAttendance.checkIn} 
-                    onChange={(e) => setNewAttendance(prev => ({ ...prev, checkIn: e.target.value }))} 
-                    className="form-control" 
+                    type="datetime-local"
+                    value={newAttendance.checkIn}
+                    onChange={(e) => setNewAttendance(prev => ({ ...prev, checkIn: e.target.value }))}
+                    className="form-control"
                   />
                   <span className="form-help">Leave empty for current time</span>
                 </div>
-                
+
                 <div className="form-group">
                   <label htmlFor="attendance-checkout">Check Out</label>
-                  <input 
+                  <input
                     id="attendance-checkout"
-                    type="datetime-local" 
-                    value={newAttendance.checkOut} 
-                    onChange={(e) => setNewAttendance(prev => ({ ...prev, checkOut: e.target.value }))} 
-                    className="form-control" 
+                    type="datetime-local"
+                    value={newAttendance.checkOut}
+                    onChange={(e) => setNewAttendance(prev => ({ ...prev, checkOut: e.target.value }))}
+                    className="form-control"
                   />
                   <span className="form-help">Leave empty if still active</span>
                 </div>
               </div>
-              
+
               <div className="form-group">
                 <label htmlFor="attendance-source">Source</label>
-                <select 
+                <select
                   id="attendance-source"
-                  value={newAttendance.source} 
-                  onChange={(e) => setNewAttendance(prev => ({ ...prev, source: e.target.value }))} 
+                  value={newAttendance.source}
+                  onChange={(e) => setNewAttendance(prev => ({ ...prev, source: e.target.value }))}
                   className="form-control"
                 >
                   <option value="manual">Manual Entry</option>
@@ -521,16 +523,16 @@ const Attendance = () => {
                 </select>
               </div>
             </div>
-            
+
             <div className="modal-footer">
-              <button 
-                onClick={() => setShowAddModal(false)} 
+              <button
+                onClick={() => setShowAddModal(false)}
                 className="button button-secondary"
               >
                 Cancel
               </button>
-              <button 
-                onClick={handleAddAttendance} 
+              <button
+                onClick={handleAddAttendance}
                 className="button button-primary"
                 disabled={!newAttendance.memberId}
               >

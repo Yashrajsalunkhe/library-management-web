@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../contexts/NotificationContext';
 import BiometricEnrollment from '../components/BiometricEnrollment';
+import { api } from '../services/api';
 
 const Members = ({ initialAction = null }) => {
   const [members, setMembers] = useState([]);
@@ -24,7 +25,7 @@ const Members = ({ initialAction = null }) => {
     loadMembers();
     loadPlans();
     loadSettings();
-    
+
     // Handle initial action from menu
     if (initialAction?.action === 'new') {
       setShowAddModal(true);
@@ -33,7 +34,7 @@ const Members = ({ initialAction = null }) => {
 
   const loadSettings = async () => {
     try {
-      const result = await window.api.settings.getSettings();
+      const result = await api.settings.getSettings();
       if (result.success) {
         setSettings(result.settings);
       }
@@ -44,7 +45,7 @@ const Members = ({ initialAction = null }) => {
 
   const loadMembers = async () => {
     try {
-      const result = await window.api.member.list(filters);
+      const result = await api.member.list(filters);
       if (result.success) {
         setMembers(result.data);
       }
@@ -57,7 +58,7 @@ const Members = ({ initialAction = null }) => {
 
   const loadPlans = async () => {
     try {
-      const result = await window.api.plan.list();
+      const result = await api.plan.list();
       if (result.success) {
         setPlans(result.data);
       }
@@ -68,15 +69,15 @@ const Members = ({ initialAction = null }) => {
 
   const handleAddMember = async (memberData) => {
     try {
-      const result = await window.api.member.add(memberData);
+      const result = await api.member.add(memberData);
       if (result.success) {
         success('Member added successfully');
         setShowAddModal(false);
         loadMembers();
-        
+
         // Send welcome message
         const member = { ...memberData, id: result.data.id };
-        window.api.notification.sendWelcome(member);
+        api.notification.sendWelcome(member);
       } else {
         error(result.message || 'Failed to add member');
       }
@@ -87,10 +88,10 @@ const Members = ({ initialAction = null }) => {
 
   const handleEditMember = async (memberData) => {
     if (isProcessing) return; // Prevent duplicate submissions
-    
+
     setIsProcessing(true);
     try {
-      const result = await window.api.member.update(memberData);
+      const result = await api.member.update(memberData);
       if (result.success) {
         success('Member updated successfully');
         setShowEditModal(false);
@@ -109,10 +110,10 @@ const Members = ({ initialAction = null }) => {
 
   const handleRenewMember = async (renewalData) => {
     if (isProcessing) return; // Prevent duplicate submissions
-    
+
     setIsProcessing(true);
     try {
-      const result = await window.api.member.renew(renewalData);
+      const result = await api.member.renew(renewalData);
       if (result.success) {
         success('Member renewed successfully');
         setShowRenewModal(false);
@@ -131,13 +132,13 @@ const Members = ({ initialAction = null }) => {
   const handleDeleteMember = async (memberId) => {
     const member = members.find(m => m.id === memberId);
     const action = member.status === 'suspended' ? 'activate' : 'suspend';
-    const confirmMessage = action === 'suspend' 
-      ? 'Are you sure you want to suspend this member?' 
+    const confirmMessage = action === 'suspend'
+      ? 'Are you sure you want to suspend this member?'
       : 'Are you sure you want to activate this member?';
-    
+
     if (confirm(confirmMessage)) {
       try {
-        const result = await window.api.member.delete(memberId);
+        const result = await api.member.delete(memberId);
         if (result.success) {
           success(`Member ${action}d successfully`);
           loadMembers();
@@ -153,10 +154,10 @@ const Members = ({ initialAction = null }) => {
   const handlePermanentDelete = async (memberId) => {
     const member = members.find(m => m.id === memberId);
     const confirmMessage = `Are you sure you want to permanently delete ${member.name}? This action cannot be undone.`;
-    
+
     if (confirm(confirmMessage)) {
       try {
-        const result = await window.api.member.permanentDelete(memberId);
+        const result = await api.member.permanentDelete(memberId);
         if (result.success) {
           success('Member permanently deleted successfully');
           loadMembers();
@@ -174,9 +175,9 @@ const Members = ({ initialAction = null }) => {
     if (!planId || !endDate || endDate === '1900-01-01') {
       return <span className="badge badge-secondary">Not Active</span>;
     }
-    
+
     const isExpired = new Date(endDate) < new Date();
-    
+
     if (status === 'suspended') {
       return <span className="badge badge-danger">Suspended</span>;
     } else if (isExpired) {
@@ -191,17 +192,17 @@ const Members = ({ initialAction = null }) => {
     }
   };
 
-  const activeMembers = members.filter(member => 
-    member.status !== 'suspended' && 
-    (!filters.search || 
+  const activeMembers = members.filter(member =>
+    member.status !== 'suspended' &&
+    (!filters.search ||
       member.name.toLowerCase().includes(filters.search.toLowerCase()) ||
       member.email?.toLowerCase().includes(filters.search.toLowerCase()) ||
       member.phone?.includes(filters.search))
   );
 
-  const suspendedMembers = members.filter(member => 
-    member.status === 'suspended' && 
-    (!filters.search || 
+  const suspendedMembers = members.filter(member =>
+    member.status === 'suspended' &&
+    (!filters.search ||
       member.name.toLowerCase().includes(filters.search.toLowerCase()) ||
       member.email?.toLowerCase().includes(filters.search.toLowerCase()) ||
       member.phone?.includes(filters.search))
@@ -219,10 +220,13 @@ const Members = ({ initialAction = null }) => {
   const renderMembersTable = (membersList, title, showActions = true, isSuspended = false) => (
     <div className="card mb-6">
       <div className="card-header">
-        <h3 className="card-title">{title} ({membersList.length})</h3>
+        <h3 className="card-title">
+          {title}
+          <span className="badge badge-secondary" style={{ marginLeft: '0.5rem' }}>{membersList.length}</span>
+        </h3>
       </div>
       {membersList.length > 0 ? (
-        <div style={{ overflowX: 'auto' }}>
+        <div className="table-container">
           <table className="table">
             <thead>
               <tr>
@@ -265,13 +269,13 @@ const Members = ({ initialAction = null }) => {
                                 </button>
                               );
                             }
-                            
+
                             // Check if plan is expiring (within 10 days) or expired
                             const endDate = new Date(member.end_date);
                             const today = new Date();
                             const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
                             const isExpiredOrExpiring = daysLeft <= 10;
-                            
+
                             if (isExpiredOrExpiring) {
                               return (
                                 <button
@@ -285,7 +289,7 @@ const Members = ({ initialAction = null }) => {
                                 </button>
                               );
                             }
-                            
+
                             return null; // Don't show any button if plan is not expiring
                           })()
                         )}
@@ -312,7 +316,7 @@ const Members = ({ initialAction = null }) => {
                           }}
                           className="button button-info button-sm"
                           title="Manage Biometric"
-                          style={{ 
+                          style={{
                             padding: '4px 8px',
                             fontSize: '12px',
                             backgroundColor: '#3b82f6'
@@ -327,7 +331,7 @@ const Members = ({ initialAction = null }) => {
                           }}
                           className="button button-secondary button-sm"
                           title="More Details"
-                          style={{ 
+                          style={{
                             padding: '4px 8px',
                             fontSize: '14px',
                             fontWeight: 'bold'
@@ -352,36 +356,40 @@ const Members = ({ initialAction = null }) => {
   );
 
   return (
-    <div className="page-container">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1>Members Management</h1>
-          <p>Manage library members and their memberships</p>
+    <div>
+      {/* Header Card */}
+      <div className="card mb-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--slate-800)', marginBottom: '0.25rem' }}>
+              Members Management
+            </h2>
+            <p className="text-sm text-gray-500">Manage library members and their memberships</p>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="button button-primary"
+          >
+            <span style={{ fontSize: '1.2rem' }}>➕</span>
+            Add Member
+          </button>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="button button-primary"
-        >
-          <span style={{ marginRight: '0.5rem' }}>➕</span>
-          Add Member
-        </button>
       </div>
 
       {/* Search Filter */}
-      <div className="card mb-4">
-        <div className="search-section">
-          <label>
-            <span className="search-icon">🔍</span>
-            Search Members
-          </label>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search by name, email, or phone..."
-            value={filters.search}
-            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-          />
+      <div className="card mb-6">
+        <div className="flex items-center gap-4">
+          <div className="flex-1 relative">
+            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '1.1rem' }}>🔍</span>
+            <input
+              type="text"
+              className="input"
+              style={{ paddingLeft: '2.5rem' }}
+              placeholder="Search by name, email, or phone..."
+              value={filters.search}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+            />
+          </div>
         </div>
       </div>
 
@@ -491,19 +499,19 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
 
   useEffect(() => {
     loadNextSeatNumber();
-    
+
     // Set default ID document type from settings
     if (settings?.membership?.selectedIdDocumentType) {
-      setFormData(prev => ({ 
-        ...prev, 
-        idDocumentType: settings.membership.selectedIdDocumentType 
+      setFormData(prev => ({
+        ...prev,
+        idDocumentType: settings.membership.selectedIdDocumentType
       }));
     }
   }, [settings]);
 
   const loadNextSeatNumber = async () => {
     try {
-      const result = await window.api.member.getNextSeatNumber();
+      const result = await api.member.getNextSeatNumber();
       if (result.success) {
         setNextSeatNumber(result.data);
         setFormData(prev => ({ ...prev, seatNo: result.data }));
@@ -511,15 +519,15 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
         // Handle case when no seats are available
         setNextSeatNumber('');
         setFormData(prev => ({ ...prev, seatNo: '' }));
-        setSeatValidation({ 
-          isValid: false, 
+        setSeatValidation({
+          isValid: false,
           message: result.message || 'No seats available'
         });
       }
     } catch (error) {
       console.error('Failed to get next seat number:', error);
-      setSeatValidation({ 
-        isValid: false, 
+      setSeatValidation({
+        isValid: false,
         message: 'Failed to get seat number'
       });
     }
@@ -533,11 +541,19 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
 
     setValidatingInput(true);
     try {
-      const result = await window.api.member.validateSeatNumber({ seatNo: seatNo.trim() });
+      const result = await api.member.validateSeatNumber({ 
+        seatNo: seatNo.trim(),
+        memberId: null // New member, so no memberId to exclude
+      });
       if (result.success) {
-        setSeatValidation({ 
-          isValid: result.available, 
-          message: result.available ? '' : result.message 
+        setSeatValidation({
+          isValid: result.available,
+          message: result.available ? '' : result.message || 'Seat not available'
+        });
+      } else {
+        setSeatValidation({
+          isValid: false,
+          message: result.message || 'Failed to validate seat number'
         });
       }
     } catch (error) {
@@ -551,7 +567,7 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Validate seat number when it changes
     if (name === 'seatNo') {
       validateSeatNumber(value);
@@ -560,12 +576,12 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Check seat number validation before submitting
     if (!seatValidation.isValid && formData.seatNo.trim() !== '') {
       return;
     }
-    
+
     // Add default values for plan-related fields when no plan is assigned
     const memberDataWithDefaults = {
       ...formData,
@@ -578,12 +594,12 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal member-form-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">👤 Add New Member</h3>
-          <button onClick={onClose} className="modal-close" aria-label="Close modal">×</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <div className="form-section">
@@ -695,7 +711,7 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
                     </select>
                     <small className="form-help">
                       Select the type of identity document being provided
-                      {settings.membership.idDocumentTypes.filter(doc => doc.enabled).length === 1 && 
+                      {settings.membership.idDocumentTypes.filter(doc => doc.enabled).length === 1 &&
                         ` (Only ${settings.membership.idDocumentTypes.find(doc => doc.enabled)?.label} is configured)`
                       }
                     </small>
@@ -703,8 +719,8 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
 
                   <div className="form-group">
                     <label className="form-label">
-                      {formData.idDocumentType && settings?.membership?.idDocumentTypes ? 
-                        `${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'Document'} Number *` : 
+                      {formData.idDocumentType && settings?.membership?.idDocumentTypes ?
+                        `${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'Document'} Number *` :
                         'Document Number *'
                       }
                     </label>
@@ -715,15 +731,15 @@ const AddMemberModal = ({ plans, settings, onSubmit, onClose }) => {
                       value={formData.idNumber}
                       onChange={handleChange}
                       placeholder={
-                        formData.idDocumentType && settings?.membership?.idDocumentTypes ? 
+                        formData.idDocumentType && settings?.membership?.idDocumentTypes ?
                           `Enter ${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'document'} number` :
                           'Enter document number'
                       }
                       required={formData.idDocumentType ? true : false}
                     />
                     <small className="form-help">
-                      {formData.idDocumentType && settings?.membership?.idDocumentTypes ? 
-                        `Enter ${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'document'} number` : 
+                      {formData.idDocumentType && settings?.membership?.idDocumentTypes ?
+                        `Enter ${settings.membership.idDocumentTypes.find(doc => doc.id === formData.idDocumentType)?.label || 'document'} number` :
                         'Enter identity document number'
                       }
                     </small>
@@ -784,7 +800,7 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return; // Prevent duplicate submissions
-    
+
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
@@ -798,14 +814,14 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">
             {isNewPlan ? `Add Plan - ${member.name}` : `Renew Membership - ${member.name}`}
           </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem' }}>×</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             {!isNewPlan && (
@@ -813,7 +829,7 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
                 Current membership expires on: <strong>{member.end_date}</strong>
               </div>
             )}
-            
+
             {isNewPlan && (
               <div className="alert alert-warning mb-4">
                 This member currently has no active plan. Select a plan to activate their membership.
@@ -902,12 +918,12 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
 const MemberDetailsModal = ({ member, onEdit, onClose }) => {
   return (
     <div className="modal-overlay">
-      <div className="modal member-details-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">👤 Member Details - {member.name}</h3>
-          <button onClick={onClose} className="modal-close" aria-label="Close modal">×</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
         </div>
-        
+
         <div className="modal-body">
           <div className="member-details-grid">
             {/* Personal Information Section */}
@@ -1061,14 +1077,14 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
 
     setValidatingInput(true);
     try {
-      const result = await window.api.member.validateSeatNumber({ 
-        seatNo: seatNo.trim(), 
-        memberId: member.id 
+      const result = await api.member.validateSeatNumber({
+        seatNo: seatNo.trim(),
+        memberId: member.id
       });
       if (result.success) {
-        setSeatValidation({ 
-          isValid: result.available, 
-          message: result.available ? '' : result.message 
+        setSeatValidation({
+          isValid: result.available,
+          message: result.available ? '' : result.message
         });
       }
     } catch (error) {
@@ -1095,9 +1111,9 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
         const joinDate = new Date(formData.joinDate);
         const endDate = new Date(joinDate);
         endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
-        setFormData(prev => ({ 
-          ...prev, 
-          endDate: endDate.toISOString().split('T')[0] 
+        setFormData(prev => ({
+          ...prev,
+          endDate: endDate.toISOString().split('T')[0]
         }));
       }
     }
@@ -1109,9 +1125,9 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
         const joinDate = new Date(value);
         const endDate = new Date(joinDate);
         endDate.setDate(endDate.getDate() + selectedPlan.duration_days);
-        setFormData(prev => ({ 
-          ...prev, 
-          endDate: endDate.toISOString().split('T')[0] 
+        setFormData(prev => ({
+          ...prev,
+          endDate: endDate.toISOString().split('T')[0]
         }));
       }
     }
@@ -1120,12 +1136,12 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return; // Prevent duplicate submissions
-    
+
     // Check seat number validation before submitting
     if (!seatValidation.isValid && formData.seatNo.trim() !== '') {
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
@@ -1136,12 +1152,12 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal member-form-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3 className="modal-title">✏️ Edit Member - {member.name}</h3>
-          <button onClick={onClose} className="modal-close" aria-label="Close modal">×</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             <div className="form-section">
@@ -1257,7 +1273,7 @@ const EditMemberModal = ({ member, plans, settings, onSubmit, onClose }) => {
                   />
                 </div>
 
-                <div className="form-group" style={{gridColumn: '1 / -1'}}>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">Address</label>
                   <textarea
                     name="address"

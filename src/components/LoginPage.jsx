@@ -18,10 +18,12 @@ const LoginPage = () => {
     try {
       const result = await login(credentials);
       if (!result.success) {
+        console.error('Login failed:', result.message);
         error(result.message || 'Login failed');
       }
     } catch (err) {
-      error('An unexpected error occurred');
+      console.error('Login error:', err);
+      error(`Error: ${err.message || 'An unexpected error occurred'}`);
     } finally {
       setLoading(false);
     }
@@ -40,12 +42,19 @@ const LoginPage = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      padding: '1rem'
     }}>
-      <div className="card" style={{ width: '100%', maxWidth: '400px', margin: '1rem' }}>
+      <div className="card" style={{
+        width: '100%',
+        maxWidth: '420px',
+        padding: '2.5rem',
+        backdropFilter: 'blur(20px)',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)'
+      }}>
         <div className="text-center mb-4">
-          <h1 className="text-xl font-semibold mb-2">Library Management System</h1>
-          <p className="text-gray-600">Sign in to your account</p>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📚</div>
+          <h1 className="text-xl font-semibold mb-2" style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem' }}>Welcome Back</h1>
+          <p className="text-gray-600">Sign in to Library Management System</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -62,6 +71,7 @@ const LoginPage = () => {
               onChange={handleChange}
               required
               autoFocus
+              placeholder="Enter your username"
             />
           </div>
 
@@ -77,16 +87,17 @@ const LoginPage = () => {
               value={credentials.password}
               onChange={handleChange}
               required
+              placeholder="Enter your password"
             />
           </div>
 
           <button
             type="submit"
             className="button button-primary"
-            style={{ width: '100%' }}
+            style={{ width: '100%', marginTop: '1rem', padding: '0.875rem' }}
             disabled={loading}
           >
-            {loading && <div className="loading-spinner" />}
+            {loading && <div className="loading-spinner" style={{ width: '16px', height: '16px', borderTopColor: 'white' }} />}
             Sign In
           </button>
         </form>

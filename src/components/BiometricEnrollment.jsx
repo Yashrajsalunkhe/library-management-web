@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
   const [status, setStatus] = useState('idle'); // idle, enrolling, success, error
@@ -11,7 +12,7 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
     checkBiometricStatus();
 
     // Set up event listeners for enrollment feedback
-    const biometricEventCleanup = window.api?.biometric?.onEvent((eventData) => {
+    const biometricEventCleanup = api.biometric?.onEvent((eventData) => {
       if (eventData.EventType === 'enrollment' && eventData.MemberId === member.id) {
         handleEnrollmentEvent(eventData);
       }
@@ -24,7 +25,7 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
 
   const checkBiometricStatus = async () => {
     try {
-      const result = await window.api?.biometric?.getStatus();
+      const result = await api.biometric?.getStatus();
       setBiometricStatus({
         connected: result.success,
         scanning: false
@@ -39,7 +40,7 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
       setStatus('success');
       setMessage('Fingerprint enrolled successfully!');
       setProgress(100);
-      
+
       setTimeout(() => {
         onSuccess?.(eventData);
         onClose?.();
@@ -57,8 +58,8 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
       setMessage('Place finger on the scanner...');
       setProgress(25);
 
-      const result = await window.api?.biometric?.enrollFingerprint(member.id);
-      
+      const result = await api.biometric?.enrollFingerprint(member.id);
+
       if (result.success) {
         setMessage('Enrollment started. Follow device instructions...');
         setProgress(50);
@@ -80,13 +81,13 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
       setMessage('Deleting fingerprint...');
       setProgress(50);
 
-      const result = await window.api?.biometric?.deleteFingerprint(member.id);
-      
+      const result = await api.biometric?.deleteFingerprint(member.id);
+
       if (result.success) {
         setStatus('success');
         setMessage('Fingerprint deleted successfully!');
         setProgress(100);
-        
+
         setTimeout(() => {
           onSuccess?.({ deleted: true });
           onClose?.();
@@ -108,11 +109,11 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
       case 'enrolling':
         return <span className="text-4xl animate-pulse">👆</span>;
       case 'success':
-        return <span className="text-4xl" style={{color: '#22c55e'}}>✅</span>;
+        return <span className="text-4xl" style={{ color: '#22c55e' }}>✅</span>;
       case 'error':
-        return <span className="text-4xl" style={{color: '#ef4444'}}>❌</span>;
+        return <span className="text-4xl" style={{ color: '#ef4444' }}>❌</span>;
       default:
-        return <span className="text-4xl" style={{color: '#9ca3af'}}>👆</span>;
+        return <span className="text-4xl" style={{ color: '#9ca3af' }}>👆</span>;
     }
   };
 
@@ -163,7 +164,7 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
             <div className="flex justify-center mb-4">
               {getStatusIcon()}
             </div>
-            
+
             {message && (
               <p className={`text-sm mb-3 text-${color}-600`}>
                 {message}
@@ -203,7 +204,7 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
                 Enrollment in Progress
               </h3>
               <p className="text-sm text-blue-800">
-                Please follow the instructions on the biometric device. 
+                Please follow the instructions on the biometric device.
                 You may need to scan your finger multiple times.
               </p>
             </div>
@@ -215,9 +216,8 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
           <button
             onClick={onClose}
             disabled={status === 'enrolling'}
-            className={`px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 ${
-              status === 'enrolling' ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 ${status === 'enrolling' ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
           >
             {status === 'enrolling' ? 'Enrolling...' : 'Close'}
           </button>
@@ -237,11 +237,10 @@ const BiometricEnrollment = ({ member, onClose, onSuccess }) => {
             <button
               onClick={startEnrollment}
               disabled={!biometricStatus.connected || status === 'enrolling'}
-              className={`px-4 py-2 text-sm font-medium rounded-lg text-white ${
-                biometricStatus.connected && status !== 'enrolling'
+              className={`px-4 py-2 text-sm font-medium rounded-lg text-white ${biometricStatus.connected && status !== 'enrolling'
                   ? 'bg-blue-600 hover:bg-blue-700'
                   : 'bg-gray-400 cursor-not-allowed'
-              } flex items-center`}
+                } flex items-center`}
             >
               <span className="mr-1">👆</span>
               {status === 'enrolling' ? 'Enrolling...' : 'Start Enrollment'}

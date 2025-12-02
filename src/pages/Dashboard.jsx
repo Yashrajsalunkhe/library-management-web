@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../contexts/NotificationContext';
 import BiometricStatus from '../components/BiometricStatus';
+import { api } from '../services/api';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
+  const [seatStats, setSeatStats] = useState(null);
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [backupLoading, setBackupLoading] = useState(false);
@@ -16,15 +18,21 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       // Load dashboard stats
-      const statsResult = await window.api.dashboard.stats();
+      const statsResult = await api.dashboard.stats();
       if (statsResult.success) {
         setStats(statsResult.data);
       }
 
+      // Load seat statistics
+      const seatStatsResult = await api.member.getSeatStats();
+      if (seatStatsResult.success) {
+        setSeatStats(seatStatsResult.data);
+      }
+
       // Load today's attendance
-      const attendanceResult = await window.api.attendance.today();
+      const attendanceResult = await api.attendance.today();
       if (attendanceResult.success) {
         setRecentAttendance(attendanceResult.data.slice(0, 10)); // Show last 10
       }
@@ -37,7 +45,7 @@ const Dashboard = () => {
 
   const sendExpiryReminders = async () => {
     try {
-      const result = await window.api.notification.sendExpiryReminders();
+      const result = await api.notification.sendExpiryReminders();
       if (result.success) {
         success(`Expiry reminders sent to ${result.data.length} members`);
       } else {
@@ -51,15 +59,11 @@ const Dashboard = () => {
   const createBackup = async () => {
     setBackupLoading(true);
     try {
-      if (window.api?.backup?.createBackup) {
-        const result = await window.api.backup.createBackup();
-        if (result.success) {
-          success(`Database backup created successfully! Saved as: ${result.timestamp}`);
-        } else {
-          error(result.message || 'Failed to create backup');
-        }
+      const result = await api.backup.createBackup();
+      if (result.success) {
+        success(`Database backup created successfully! Saved as: ${result.timestamp}`);
       } else {
-        error('Backup functionality not available');
+        error(result.message || 'Failed to create backup');
       }
     } catch (err) {
       console.error('Backup error:', err);
@@ -79,106 +83,82 @@ const Dashboard = () => {
   }
 
   return (
-    <div>
-      {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Members</p>
-              <p className="text-xl font-semibold text-blue-600">
-                {stats?.totalMembers || 0}
-              </p>
-            </div>
-            <span style={{ fontSize: '2rem', opacity: 0.6 }}>👥</span>
-          </div>
+    <div className="dashboard-container animate-fade-in">
+      {/* Stats Grid */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-label">Total Members</div>
+          <div className="stat-value">{stats?.totalMembers || 0}</div>
+          <div className="text-sm text-gray-500">Active library members</div>
+          <div className="stat-icon">👥</div>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Today's Attendance</p>
-              <p className="text-xl font-semibold text-green-600">
-                {stats?.todayAttendance || 0}
-              </p>
-            </div>
-            <span style={{ fontSize: '2rem', opacity: 0.6 }}>📅</span>
-          </div>
+        <div className="stat-card">
+          <div className="stat-label">Today's Attendance</div>
+          <div className="stat-value">{stats?.todayAttendance || 0}</div>
+          <div className="text-sm text-gray-500">Checked in today</div>
+          <div className="stat-icon">📅</div>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Today's Income</p>
-              <p className="text-xl font-semibold text-green-600">
-                ₹{stats?.todayIncome?.toFixed(2) || '0.00'}
-              </p>
-            </div>
-            <span style={{ fontSize: '2rem', opacity: 0.6 }}>💰</span>
+        <div className="stat-card">
+          <div className="stat-label">Available Seats</div>
+          <div className="stat-value" style={{
+            background: seatStats?.availableSeats > 0 
+              ? 'linear-gradient(135deg, var(--success-500), #059669)'
+              : 'linear-gradient(135deg, var(--error-500), #dc2626)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            {seatStats?.availableSeats || 0}/{seatStats?.totalSeats || 0}
           </div>
+          <div className="text-sm text-gray-500">
+            {seatStats?.utilizationPercentage || 0}% occupied
+          </div>
+          <div className="stat-icon">💺</div>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Today's Expenditure</p>
-              <p className="text-xl font-semibold text-red-600">
-                ₹{stats?.todayExpenditure?.toFixed(2) || '0.00'}
-              </p>
-            </div>
-            <span style={{ fontSize: '2rem', opacity: 0.6 }}>💸</span>
+        <div className="stat-card">
+          <div className="stat-label">Today's Income</div>
+          <div className="stat-value" style={{
+            background: 'linear-gradient(135deg, var(--success-500), #059669)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            ₹{stats?.todayIncome?.toFixed(2) || '0.00'}
           </div>
-        </div>
-      </div>
-
-      {/* Second row of stats */}
-      <div className="grid grid-cols-4 gap-4 mb-4">
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Expenditures</p>
-              <p className="text-xl font-semibold text-red-600">
-                ₹{stats?.totalExpenditure?.toFixed(2) || '0.00'}
-              </p>
-            </div>
-            <span style={{ fontSize: '2rem', opacity: 0.6 }}>💳</span>
-          </div>
+          <div className="text-sm text-gray-500">Revenue collected today</div>
+          <div className="stat-icon" style={{ color: 'var(--success-500)' }}>💰</div>
         </div>
 
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Net Income Today</p>
-              <p className={`text-xl font-semibold ${(stats?.todayNetIncome || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ₹{stats?.todayNetIncome?.toFixed(2) || '0.00'}
-              </p>
-            </div>
-            <span style={{ fontSize: '2rem', opacity: 0.6 }}>📊</span>
+        <div className="stat-card">
+          <div className="stat-label">Expiring Soon</div>
+          <div className="stat-value" style={{
+            background: 'linear-gradient(135deg, var(--warning-500), #d97706)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            {stats?.expiringMembers || 0}
           </div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Expiring Soon</p>
-              <p className="text-xl font-semibold text-yellow-600">
-                {stats?.expiringMembers || 0}
-              </p>
-            </div>
-            <span style={{ fontSize: '2rem', opacity: 0.6 }}>⚠️</span>
-          </div>
+          <div className="text-sm text-gray-500">Memberships ending in 10 days</div>
+          <div className="stat-icon" style={{ color: 'var(--warning-500)' }}>⚠️</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="dashboard-grid">
         {/* Recent Attendance */}
-        <div className="card">
+        <div className="card dashboard-card-large">
           <div className="card-header">
-            <h3 className="card-title">Today's Attendance</h3>
+            <h3 className="card-title">
+              <span style={{ fontSize: '1.5rem' }}>👋</span>
+              Today's Attendance
+            </h3>
+            <span className="badge badge-info">
+              {recentAttendance.length} Records
+            </span>
           </div>
-          
+
           {recentAttendance.length > 0 ? (
-            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <div className="table-container">
               <table className="table">
                 <thead>
                   <tr>
@@ -191,22 +171,41 @@ const Dashboard = () => {
                 <tbody>
                   {recentAttendance.map(attendance => (
                     <tr key={attendance.id}>
-                      <td>{attendance.member_name}</td>
                       <td>
-                        {new Date(attendance.check_in).toLocaleTimeString()}
+                        <div className="flex items-center gap-3">
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            background: 'var(--primary-100)',
+                            color: 'var(--primary-600)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '600',
+                            fontSize: '0.8rem'
+                          }}>
+                            {attendance.member_name.charAt(0)}
+                          </div>
+                          <span className="font-medium">{attendance.member_name}</span>
+                        </div>
                       </td>
                       <td>
-                        {attendance.check_out 
-                          ? new Date(attendance.check_out).toLocaleTimeString()
-                          : <span className="badge badge-info">Active</span>
+                        <span className="text-sm text-gray-600">
+                          {new Date(attendance.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </td>
+                      <td>
+                        {attendance.check_out
+                          ? <span className="text-sm text-gray-600">{new Date(attendance.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          : <span className="badge badge-success">Active</span>
                         }
                       </td>
                       <td>
-                        <span className={`badge ${
-                          attendance.source === 'biometric' 
-                            ? 'badge-success' 
-                            : 'badge-info'
-                        }`}>
+                        <span className={`badge ${attendance.source === 'biometric'
+                          ? 'badge-info'
+                          : 'badge-secondary'
+                          }`}>
                           {attendance.source}
                         </span>
                       </td>
@@ -216,87 +215,91 @@ const Dashboard = () => {
               </table>
             </div>
           ) : (
-            <div className="text-center text-gray-500 p-4">
-              No attendance records for today
+            <div className="text-center text-gray-500 p-8 flex flex-col items-center gap-2">
+              <span style={{ fontSize: '2rem', opacity: 0.5 }}>📭</span>
+              <p>No attendance records for today</p>
             </div>
           )}
         </div>
 
-        {/* Biometric Status */}
-        <BiometricStatus className="col-span-1" />
-
-        {/* Quick Actions */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Quick Actions</h3>
-          </div>
-
-          <div className="grid gap-4">
-            <button
-              onClick={sendExpiryReminders}
-              className="button button-warning"
-              style={{ justifyContent: 'flex-start' }}
-            >
-              <span style={{ marginRight: '0.5rem' }}>📧</span>
-              Send Expiry Reminders
-            </button>
-
-            <button
-              onClick={createBackup}
-              className="button button-secondary"
-              style={{ justifyContent: 'flex-start' }}
-              disabled={backupLoading}
-            >
-              <span style={{ marginRight: '0.5rem' }}>
-                {backupLoading ? '⏳' : '💾'}
-              </span>
-              {backupLoading ? 'Creating Backup...' : 'Create Database Backup'}
-            </button>
-
-            <p style={{ 
-              fontSize: '0.75rem', 
-              color: '#718096', 
-              marginTop: '0.5rem',
-              marginBottom: '1rem'
-            }}>
-              💡 For more backup options (restore, auto-backup, etc.), visit Settings → Backup & Data
-            </p>
-
-            <div style={{ 
-              padding: '1rem', 
-              backgroundColor: '#f7fafc', 
-              borderRadius: '6px',
-              border: '1px solid #e2e8f0'
-            }}>
-              <h4 style={{ 
-                fontSize: '0.875rem', 
-                fontWeight: '600', 
-                marginBottom: '0.5rem' 
-              }}>
-                Monthly Summary
-              </h4>
-              <p style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>
-                Total Revenue: ₹{stats?.monthlyIncome?.toFixed(2) || '0.00'}
-              </p>
-              <p style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>
-                Total Expenditure: ₹{stats?.monthlyExpenditure?.toFixed(2) || '0.00'}
-              </p>
-              <p style={{ 
-                fontSize: '0.75rem', 
-                fontWeight: '600',
-                color: (stats?.monthlyNetIncome || 0) >= 0 ? '#38a169' : '#e53e3e'
-              }}>
-                Net Income: ₹{stats?.monthlyNetIncome?.toFixed(2) || '0.00'}
-              </p>
+        {/* Right Column: Quick Actions & Financial Summary */}
+        <div className="dashboard-sidebar">
+          {/* Quick Actions */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">
+                <span style={{ fontSize: '1.5rem' }}>⚡</span>
+                Quick Actions
+              </h3>
             </div>
 
-            {stats?.expiringMembers > 0 && (
-              <div className="alert alert-warning">
-                <strong>{stats.expiringMembers}</strong> member(s) will expire within 10 days.
-                Consider sending renewal reminders.
-              </div>
-            )}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={sendExpiryReminders}
+                className="button button-warning w-full"
+                style={{ justifyContent: 'flex-start' }}
+              >
+                <span style={{ fontSize: '1.2rem' }}>📧</span>
+                Send Expiry Reminders
+              </button>
+
+              <button
+                onClick={createBackup}
+                className="button button-secondary w-full"
+                style={{ justifyContent: 'flex-start' }}
+                disabled={backupLoading}
+              >
+                <span style={{ fontSize: '1.2rem' }}>
+                  {backupLoading ? '⏳' : '💾'}
+                </span>
+                {backupLoading ? 'Creating Backup...' : 'Create Database Backup'}
+              </button>
+
+              {stats?.expiringMembers > 0 && (
+                <div className="alert alert-warning mt-2">
+                  <span>⚠️ <strong>{stats.expiringMembers}</strong> memberships expiring soon.</span>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Financial Summary */}
+          <div className="card" style={{ background: 'linear-gradient(135deg, var(--primary-600), var(--primary-800))', color: 'white', border: 'none' }}>
+            <div className="card-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+              <h3 className="card-title" style={{ color: 'white' }}>
+                <span style={{ fontSize: '1.5rem' }}>📈</span>
+                Monthly Overview
+              </h3>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center">
+                <span style={{ opacity: 0.8 }}>Total Revenue</span>
+                <span className="font-semibold text-lg">₹{stats?.monthlyIncome?.toFixed(2) || '0.00'}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span style={{ opacity: 0.8 }}>Total Expenditure</span>
+                <span className="font-semibold text-lg">₹{stats?.monthlyExpenditure?.toFixed(2) || '0.00'}</span>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(255,255,255,0.2)', margin: '0.5rem 0' }}></div>
+
+              <div className="flex justify-between items-center">
+                <span style={{ fontWeight: '600' }}>Net Income</span>
+                <span style={{
+                  fontSize: '1.5rem',
+                  fontWeight: '700',
+                  color: (stats?.monthlyNetIncome || 0) >= 0 ? '#4ade80' : '#f87171'
+                }}>
+                  ₹{stats?.monthlyNetIncome?.toFixed(2) || '0.00'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Biometric Status */}
+          <BiometricStatus />
         </div>
       </div>
     </div>

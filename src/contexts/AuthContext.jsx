@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext } from 'react';
+import { api } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -22,7 +23,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const result = await window.api.auth.login(credentials);
+      const result = await api.auth.login(credentials);
       if (result.success) {
         setUser(result.user);
         localStorage.setItem('library_user', JSON.stringify(result.user));
@@ -42,7 +43,7 @@ export const AuthProvider = ({ children }) => {
 
   const requestPasswordChangeOTP = async (data) => {
     try {
-      const result = await window.api.auth.requestPasswordChangeOTP(data);
+      const result = await api.auth.requestPasswordChangeOTP(data);
       return result;
     } catch (error) {
       return { success: false, message: error.message };
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }) => {
 
   const changePassword = async (data) => {
     try {
-      const result = await window.api.auth.changePassword(data);
+      const result = await api.auth.changePassword(data);
       return result;
     } catch (error) {
       return { success: false, message: error.message };
@@ -60,7 +61,7 @@ export const AuthProvider = ({ children }) => {
 
   const changeUsername = async (data) => {
     try {
-      const result = await window.api.auth.changeUsername(data);
+      const result = await api.auth.changeUsername(data);
       if (result.success) {
         // Update user context with new username
         const updatedUser = { ...user, username: data.newUsername };

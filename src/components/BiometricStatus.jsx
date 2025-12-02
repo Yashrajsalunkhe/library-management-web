@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const BiometricStatus = ({ className = '' }) => {
   const [status, setStatus] = useState({
@@ -16,12 +17,12 @@ const BiometricStatus = ({ className = '' }) => {
     checkBiometricStatus();
 
     // Set up real-time event listeners
-    const biometricEventCleanup = window.api?.biometric?.onEvent((eventData) => {
+    const biometricEventCleanup = api.biometric?.onEvent((eventData) => {
       console.log('Biometric event received:', eventData);
       handleBiometricEvent(eventData);
     });
 
-    const attendanceCleanup = window.api?.biometric?.onAttendanceRecorded((attendanceData) => {
+    const attendanceCleanup = api.biometric?.onAttendanceRecorded((attendanceData) => {
       console.log('Attendance recorded:', attendanceData);
       handleAttendanceRecorded(attendanceData);
     });
@@ -35,9 +36,9 @@ const BiometricStatus = ({ className = '' }) => {
   const checkBiometricStatus = async () => {
     try {
       setStatus(prev => ({ ...prev, loading: true }));
-      
-      const result = await window.api?.biometric?.testConnection();
-      
+
+      const result = await api.biometric?.testConnection();
+
       if (result.success) {
         setStatus(prev => ({
           ...prev,
@@ -106,8 +107,8 @@ const BiometricStatus = ({ className = '' }) => {
   const startScanning = async () => {
     try {
       setStatus(prev => ({ ...prev, scanning: true }));
-      const result = await window.api?.biometric?.startScanning();
-      
+      const result = await api.biometric?.startScanning();
+
       if (!result.success) {
         setStatus(prev => ({ ...prev, scanning: false }));
         console.error('Failed to start scanning:', result.error);
@@ -120,9 +121,9 @@ const BiometricStatus = ({ className = '' }) => {
 
   const stopScanning = async () => {
     try {
-      const result = await window.api?.biometric?.stopScanning();
+      const result = await api.biometric?.stopScanning();
       setStatus(prev => ({ ...prev, scanning: false }));
-      
+
       if (!result.success) {
         console.error('Failed to stop scanning:', result.error);
       }
@@ -134,9 +135,9 @@ const BiometricStatus = ({ className = '' }) => {
 
   const getStatusIcon = () => {
     if (status.loading) return <span className="animate-spin">⚡</span>;
-    if (!status.connected) return <span style={{color: '#ef4444'}}>❌</span>;
-    if (status.scanning) return <span className="animate-pulse" style={{color: '#22c55e'}}>🔍</span>;
-    return <span style={{color: '#22c55e'}}>✅</span>;
+    if (!status.connected) return <span style={{ color: '#ef4444' }}>❌</span>;
+    if (status.scanning) return <span className="animate-pulse" style={{ color: '#22c55e' }}>🔍</span>;
+    return <span style={{ color: '#22c55e' }}>✅</span>;
   };
 
   const getStatusText = () => {
@@ -148,14 +149,14 @@ const BiometricStatus = ({ className = '' }) => {
 
   const getNotificationIcon = (notification) => {
     if (notification.type === 'attendance') {
-      return <span style={{color: '#3b82f6'}}>👥</span>;
+      return <span style={{ color: '#3b82f6' }}>👥</span>;
     }
-    
+
     if (notification.success) {
-      return <span style={{color: '#22c55e'}}>✅</span>;
+      return <span style={{ color: '#22c55e' }}>✅</span>;
     }
-    
-    return <span style={{color: '#f59e0b'}}>⚠️</span>;
+
+    return <span style={{ color: '#f59e0b' }}>⚠️</span>;
   };
 
   if (status.loading) {
@@ -181,7 +182,7 @@ const BiometricStatus = ({ className = '' }) => {
               <p className="text-sm text-gray-500">{getStatusText()}</p>
             </div>
           </div>
-          
+
           {status.connected && (
             <div className="flex space-x-2">
               {!status.scanning ? (

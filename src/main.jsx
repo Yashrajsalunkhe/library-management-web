@@ -2,6 +2,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import { api } from './services/api';
+
+// Attach API to window for backward compatibility with Electron code - Removed
+// if (typeof window !== 'undefined') {
+//   window.api = api;
+// }
 
 // Error boundary to catch and display any loading errors
 const ErrorBoundary = ({ children }) => {

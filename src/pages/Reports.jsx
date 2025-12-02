@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { api } from '../services/api';
 
 const Reports = ({ initialTab }) => {
   const [activeTab, setActiveTab] = useState(initialTab?.tab || 'overview');
@@ -36,12 +37,12 @@ const Reports = ({ initialTab }) => {
       if (activeTab !== 'overview') {
         const fromDate = new Date(dateRange.from);
         const toDate = new Date(dateRange.to);
-        
+
         if (fromDate > toDate) {
           console.error('Invalid date range: from date is after to date');
           return;
         }
-        
+
         // Check if date range is too far in the future
         const today = new Date();
         if (fromDate > today) {
@@ -75,7 +76,7 @@ const Reports = ({ initialTab }) => {
 
   const loadOverviewData = async () => {
     try {
-      const stats = await window.api.dashboard.stats();
+      const stats = await api.dashboard.stats();
       if (stats.success) {
         setReportData(prev => ({ ...prev, overview: stats.data }));
       }
@@ -87,7 +88,7 @@ const Reports = ({ initialTab }) => {
   const loadAttendanceReport = async () => {
     try {
       console.log('Loading attendance report for date range:', dateRange);
-      const result = await window.api.report.attendance({
+      const result = await api.report.attendance({
         dateFrom: dateRange.from,
         dateTo: dateRange.to
       });
@@ -107,7 +108,7 @@ const Reports = ({ initialTab }) => {
   const loadPaymentsReport = async () => {
     try {
       console.log('Loading payments report for date range:', dateRange);
-      const result = await window.api.report.payments({
+      const result = await api.report.payments({
         dateFrom: dateRange.from,
         dateTo: dateRange.to
       });
@@ -127,7 +128,7 @@ const Reports = ({ initialTab }) => {
   const loadExpendituresReport = async () => {
     try {
       console.log('Loading expenditures report for date range:', dateRange);
-      const result = await window.api.report.expenditures({
+      const result = await api.report.expenditures({
         dateFrom: dateRange.from,
         dateTo: dateRange.to
       });
@@ -146,7 +147,7 @@ const Reports = ({ initialTab }) => {
 
   const loadMembersReport = async () => {
     try {
-      const result = await window.api.member.list();
+      const result = await api.member.list();
       if (result.success) {
         setReportData(prev => ({ ...prev, members: result.data }));
       }
@@ -168,7 +169,7 @@ const Reports = ({ initialTab }) => {
     setExportLoading(true);
     try {
       console.log('Exporting report:', { type, format, dateRange });
-      
+
       const dataToExport = reportData[type];
       if (!dataToExport || dataToExport.length === 0) {
         alert(`No ${type} data available to export for the selected date range (${dateRange.from} to ${dateRange.to}).\n\nPlease:\n1. Select a different date range\n2. Check if there's data for the selected period\n3. Ensure you're connected to the database`);
@@ -177,13 +178,13 @@ const Reports = ({ initialTab }) => {
 
       console.log(`Exporting ${dataToExport.length} ${type} records`);
 
-      const result = await window.api.report.exportWithDialog({
+      const result = await api.report.exportWithDialog({
         type,
         format,
         dateRange,
         data: dataToExport
       });
-      
+
       if (result.success) {
         const formatName = format.toUpperCase();
         alert(`✅ ${type.charAt(0).toUpperCase() + type.slice(1)} report exported successfully!\n\n📊 Format: ${formatName}\n📁 Records: ${result.recordCount || dataToExport.length}\n📅 Period: ${dateRange.from} to ${dateRange.to}\n\n📂 Saved to: ${result.filepath}\n\nThe file explorer will open automatically to show your exported file.`);
@@ -249,15 +250,15 @@ const Reports = ({ initialTab }) => {
         <div className="report-header">
           <h3>Attendance Report ({dateRange.from} to {dateRange.to})</h3>
           <div className="report-actions">
-            <button 
-              onClick={() => exportReport('attendance', 'csv')} 
+            <button
+              onClick={() => exportReport('attendance', 'csv')}
               className="button button-secondary"
               disabled={exportLoading || !reportData.attendance?.length}
             >
               {exportLoading ? '⏳ Exporting...' : '📄 Export CSV'}
             </button>
-            <button 
-              onClick={() => exportReport('attendance', 'xlsx')} 
+            <button
+              onClick={() => exportReport('attendance', 'xlsx')}
               className="button button-primary"
               disabled={exportLoading || !reportData.attendance?.length}
             >
@@ -265,7 +266,7 @@ const Reports = ({ initialTab }) => {
             </button>
           </div>
         </div>
-        
+
         <div className="report-table-container">
           <table className="report-table">
             <thead>
@@ -295,7 +296,7 @@ const Reports = ({ initialTab }) => {
               ))}
             </tbody>
           </table>
-          
+
           {reportData.attendance.length === 0 && (
             <div className="no-data">No attendance data found for selected date range</div>
           )}
@@ -318,15 +319,15 @@ const Reports = ({ initialTab }) => {
             <span className="summary-item">Count: {reportData.payments.length}</span>
           </div>
           <div className="report-actions">
-            <button 
-              onClick={() => exportReport('payments', 'csv')} 
+            <button
+              onClick={() => exportReport('payments', 'csv')}
               className="button button-secondary"
               disabled={exportLoading || !reportData.payments?.length}
             >
               {exportLoading ? '⏳ Exporting...' : '📄 Export CSV'}
             </button>
-            <button 
-              onClick={() => exportReport('payments', 'xlsx')} 
+            <button
+              onClick={() => exportReport('payments', 'xlsx')}
               className="button button-primary"
               disabled={exportLoading || !reportData.payments?.length}
             >
@@ -334,7 +335,7 @@ const Reports = ({ initialTab }) => {
             </button>
           </div>
         </div>
-        
+
         <div className="report-table-container">
           <table className="report-table">
             <thead>
@@ -366,7 +367,7 @@ const Reports = ({ initialTab }) => {
               ))}
             </tbody>
           </table>
-          
+
           {reportData.payments.length === 0 && (
             <div className="no-data">No payment data found for selected date range</div>
           )}
@@ -389,15 +390,15 @@ const Reports = ({ initialTab }) => {
             <span className="summary-item">Count: {reportData.expenditures.length}</span>
           </div>
           <div className="report-actions">
-            <button 
-              onClick={() => exportReport('expenditures', 'csv')} 
+            <button
+              onClick={() => exportReport('expenditures', 'csv')}
               className="button button-secondary"
               disabled={exportLoading || !reportData.expenditures?.length}
             >
               {exportLoading ? '⏳ Exporting...' : '📄 Export CSV'}
             </button>
-            <button 
-              onClick={() => exportReport('expenditures', 'xlsx')} 
+            <button
+              onClick={() => exportReport('expenditures', 'xlsx')}
               className="button button-primary"
               disabled={exportLoading || !reportData.expenditures?.length}
             >
@@ -405,7 +406,7 @@ const Reports = ({ initialTab }) => {
             </button>
           </div>
         </div>
-        
+
         <div className="report-table-container">
           <table className="report-table">
             <thead>
@@ -432,7 +433,7 @@ const Reports = ({ initialTab }) => {
                   console.error('Date formatting error for expenditure:', expenditure, error);
                   dateDisplay = expenditure.expenditure_date || expenditure.date || '-';
                 }
-                
+
                 return (
                   <tr key={expenditure.id || index}>
                     <td>{dateDisplay}</td>
@@ -447,7 +448,7 @@ const Reports = ({ initialTab }) => {
               })}
             </tbody>
           </table>
-          
+
           {reportData.expenditures.length === 0 && (
             <div className="no-data">No expenditure data found for selected date range</div>
           )}
@@ -472,15 +473,15 @@ const Reports = ({ initialTab }) => {
             <span className="summary-item">Total: {reportData.members.length}</span>
           </div>
           <div className="report-actions">
-            <button 
-              onClick={() => exportReport('members', 'csv')} 
+            <button
+              onClick={() => exportReport('members', 'csv')}
               className="button button-secondary"
               disabled={exportLoading || !reportData.members?.length}
             >
               {exportLoading ? '⏳ Exporting...' : '📄 Export CSV'}
             </button>
-            <button 
-              onClick={() => exportReport('members', 'xlsx')} 
+            <button
+              onClick={() => exportReport('members', 'xlsx')}
               className="button button-primary"
               disabled={exportLoading || !reportData.members?.length}
             >
@@ -488,7 +489,7 @@ const Reports = ({ initialTab }) => {
             </button>
           </div>
         </div>
-        
+
         <div className="report-table-container">
           <table className="report-table">
             <thead>
@@ -520,7 +521,7 @@ const Reports = ({ initialTab }) => {
               ))}
             </tbody>
           </table>
-          
+
           {reportData.members.length === 0 && (
             <div className="no-data">No members found</div>
           )}
@@ -577,8 +578,8 @@ const Reports = ({ initialTab }) => {
                 max={dateRange.to} // Prevent from date being after to date
                 onChange={(e) => {
                   const newFromDate = e.target.value;
-                  setDateRange(prev => ({ 
-                    ...prev, 
+                  setDateRange(prev => ({
+                    ...prev,
                     from: newFromDate,
                     // Adjust to date if it's before the new from date
                     to: prev.to < newFromDate ? newFromDate : prev.to
@@ -597,14 +598,14 @@ const Reports = ({ initialTab }) => {
               />
             </label>
           </div>
-          
+
           <div className="quick-filters">
             <button onClick={() => setQuickDateRange(1)} className="quick-filter">Last Month</button>
             <button onClick={() => setQuickDateRange(3)} className="quick-filter">Last 3 Months</button>
             <button onClick={() => setQuickDateRange(6)} className="quick-filter">Last 6 Months</button>
             <button onClick={() => setQuickDateRange(12)} className="quick-filter">Last Year</button>
           </div>
-          
+
           <div className="date-info">
             {dateRange.from && dateRange.to && (
               <span className="date-range-display">

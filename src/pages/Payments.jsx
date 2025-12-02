@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNotification } from '../contexts/NotificationContext';
+import { api } from '../services/api';
 
 const Payments = () => {
   const { showNotification } = useNotification();
@@ -49,7 +50,7 @@ const Payments = () => {
   const loadPayments = async () => {
     try {
       setLoading(true);
-      const result = await window.api.payment.list(filters);
+      const result = await api.payment.list(filters);
       if (result.success) {
         setPayments(result.data);
       } else {
@@ -64,7 +65,7 @@ const Payments = () => {
 
   const loadMembers = async () => {
     try {
-      const result = await window.api.member.list({ status: 'active' });
+      const result = await api.member.list({ status: 'active' });
       if (result.success) {
         setMembers(result.data);
       }
@@ -75,7 +76,7 @@ const Payments = () => {
 
   const loadMembershipPlans = async () => {
     try {
-      const result = await window.api.plan.list();
+      const result = await api.plan.list();
       if (result.success) {
         setMembershipPlans(result.data);
       }
@@ -95,14 +96,14 @@ const Payments = () => {
 
   const handleAddPayment = async (e) => {
     e.preventDefault();
-    
+
     if (!newPayment.memberId || !newPayment.planId) {
       showNotification('Please select both member and membership plan', 'error');
       return;
     }
 
     try {
-      const result = await window.api.payment.add({
+      const result = await api.payment.add({
         ...newPayment,
         amount: parseFloat(newPayment.amount)
       });
@@ -119,17 +120,9 @@ const Payments = () => {
           planId: ''
         });
         loadPayments();
-        // If backend generated a receipt, open it for the user
-        try {
-          if (result.data && result.data.receipt) {
-            // Attempt to open the PDF with the default system application
-            await window.api.file.openPath(result.data.receipt);
-          } else if (result.data && result.data.receiptError) {
-            showNotification('Receipt generation failed: ' + result.data.receiptError, 'warning');
-          }
-        } catch (openErr) {
-          console.error('Failed to open receipt:', openErr);
-          showNotification('Payment saved but failed to open receipt', 'warning');
+        // Receipt handling for web
+        if (result.data) {
+          showNotification('Payment saved. Receipt available for download.', 'success');
         }
       } else {
         showNotification('Failed to add payment: ' + result.message, 'error');
@@ -145,16 +138,16 @@ const Payments = () => {
       if (searchTimeout) {
         clearTimeout(searchTimeout);
       }
-      
+
       // Update the filter immediately for UI responsiveness
       setFilters(prev => ({ ...prev, [field]: value }));
-      
+
       // Set a new timeout for the actual search
       const newTimeout = setTimeout(() => {
         // This will trigger the useEffect to reload payments
         setFilters(prev => ({ ...prev, [field]: value }));
       }, 300); // 300ms delay
-      
+
       setSearchTimeout(newTimeout);
     } else {
       setFilters(prev => ({ ...prev, [field]: value }));
@@ -210,100 +203,99 @@ const Payments = () => {
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <div className="page-title-section">
-          <h1> Payments Management</h1>
-          <p>Track and manage all payment transactions</p>
+    <div className="animate-fade-in">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Payments Management</h1>
+          <p className="text-slate-500">Track and manage all payment transactions</p>
         </div>
         <button
           onClick={() => setShowAddPayment(true)}
           className="button button-primary"
         >
-          + Add Payment
+          <span style={{ fontSize: '1.2rem' }}>➕</span>
+          Add Payment
         </button>
       </div>
 
       {/* Summary Cards */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-value">{formatCurrency(getTotalAmount())}</div>
           <div className="stat-label">Total Amount</div>
-          <div className="stat-subtitle">{payments.length} transactions</div>
+          <div className="stat-value text-primary-600">{formatCurrency(getTotalAmount())}</div>
+          <div className="text-sm text-gray-500">{payments.length} transactions</div>
+          <div className="stat-icon">💰</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">{formatCurrency(getTodayAmount())}</div>
           <div className="stat-label">Today's Collection</div>
-          <div className="stat-subtitle">
+          <div className="stat-value text-success-600">{formatCurrency(getTodayAmount())}</div>
+          <div className="text-sm text-gray-500">
             {payments.filter(p => p.paid_at.startsWith(new Date().toISOString().split('T')[0])).length} payments
           </div>
+          <div className="stat-icon text-success-500">📅</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">
+          <div className="stat-label">Cash Payments</div>
+          <div className="stat-value text-amber-600">
             {payments.filter(p => p.mode === 'cash').length}
           </div>
-          <div className="stat-label">Cash Payments</div>
-          <div className="stat-subtitle">
+          <div className="text-sm text-gray-500">
             {formatCurrency(payments.filter(p => p.mode === 'cash').reduce((sum, p) => sum + p.amount, 0))}
           </div>
+          <div className="stat-icon text-amber-500">💵</div>
         </div>
         <div className="stat-card">
-          <div className="stat-value">
+          <div className="stat-label">Online Payments</div>
+          <div className="stat-value text-blue-600">
             {payments.filter(p => p.mode !== 'cash').length}
           </div>
-          <div className="stat-label">Online Payments</div>
-          <div className="stat-subtitle">
+          <div className="text-sm text-gray-500">
             {formatCurrency(payments.filter(p => p.mode !== 'cash').reduce((sum, p) => sum + p.amount, 0))}
           </div>
+          <div className="stat-icon text-blue-500">💳</div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="card filters-card">
+      <div className="card mb-6">
         <div className="card-header">
-          <h3>Filter Payments</h3>
-          <p className="card-subtitle">Filter payments by member, date range, or payment mode</p>
+          <h3 className="card-title">Filter Payments</h3>
         </div>
-        
+
         {/* Search Bar */}
-        <div className="search-section">
-          <div className="form-group">
-            <label htmlFor="payment-search">
-              <span className="search-icon">🔍</span>
-              Search by Member Name
-            </label>
+        <div className="mb-4">
+          <div className="relative">
+            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>🔍</span>
             <input
-              id="payment-search"
               type="text"
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="form-control search-input"
-              placeholder="Type member name to search..."
+              className="input"
+              style={{ paddingLeft: '2.5rem' }}
+              placeholder="Search by member name..."
             />
           </div>
         </div>
 
         {/* Filter Grid */}
-        <div className="form-grid">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
           <div className="form-group">
-            <label htmlFor="period-filter">Period</label>
+            <label className="form-label">Period</label>
             <select
-              id="period-filter"
               value={filters.period}
               onChange={(e) => handleFilterChange('period', e.target.value)}
-              className="form-control"
+              className="select"
             >
               <option value="">All Time</option>
               <option value="monthly">Monthly</option>
             </select>
           </div>
           <div className="form-group">
-            <label htmlFor="member-filter">Member</label>
+            <label className="form-label">Member</label>
             <select
-              id="member-filter"
               value={filters.memberId}
               onChange={(e) => handleFilterChange('memberId', e.target.value)}
-              className="form-control"
+              className="select"
             >
               <option value="">All Members</option>
               {members.map(member => (
@@ -314,32 +306,29 @@ const Payments = () => {
             </select>
           </div>
           <div className="form-group">
-            <label htmlFor="date-from">From Date</label>
+            <label className="form-label">From Date</label>
             <input
-              id="date-from"
               type="date"
               value={filters.dateFrom}
               onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-              className="form-control"
+              className="input"
             />
           </div>
           <div className="form-group">
-            <label htmlFor="date-to">To Date</label>
+            <label className="form-label">To Date</label>
             <input
-              id="date-to"
               type="date"
               value={filters.dateTo}
               onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-              className="form-control"
+              className="input"
             />
           </div>
           <div className="form-group">
-            <label htmlFor="mode-filter">Payment Mode</label>
+            <label className="form-label">Payment Mode</label>
             <select
-              id="mode-filter"
               value={filters.mode}
               onChange={(e) => handleFilterChange('mode', e.target.value)}
-              className="form-control"
+              className="select"
             >
               <option value="">All Modes</option>
               {paymentModes.map(mode => (
@@ -349,56 +338,35 @@ const Payments = () => {
               ))}
             </select>
           </div>
-          <div className="form-group">
-            <label htmlFor="plan-filter">Membership Plan</label>
-            <select
-              id="plan-filter"
-              value={filters.planId}
-              onChange={(e) => handleFilterChange('planId', e.target.value)}
-              className="form-control"
-            >
-              <option value="">All Plans</option>
-              {membershipPlans.map(plan => (
-                <option key={plan.id} value={plan.id}>
-                  {plan.name} - ₹{plan.price}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
-        <div className="form-actions">
+
+        <div className="flex justify-end gap-2">
           <button onClick={clearFilters} className="button button-secondary">
             Clear All Filters
           </button>
           <button onClick={loadPayments} className="button button-primary">
             Apply Filter
           </button>
-          {(filters.search || filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.period) && (
-            <span className="filter-indicator">
-              {Object.values(filters).filter(Boolean).length} filter(s) active
-            </span>
-          )}
         </div>
       </div>
 
       {/* Payments Table */}
-      <div className="card payments-table-card">
+      <div className="card">
         <div className="card-header">
-          <h3>Payment History</h3>
-          <div className="card-subtitle">
-            Showing {payments.length} payment{payments.length !== 1 ? 's' : ''}
-            {filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.search || filters.period ? ' (filtered)' : ''}
-          </div>
+          <h3 className="card-title">
+            Payment History
+            <span className="badge badge-secondary ml-2">{payments.length}</span>
+          </h3>
         </div>
 
         {loading ? (
-          <div className="loading-state">
-            <div className="loading-spinner"></div>
+          <div className="p-8 text-center text-gray-500">
+            <div className="loading-spinner mb-2"></div>
             <p>Loading payments...</p>
           </div>
         ) : payments.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">💰</div>
+          <div className="text-center text-gray-500 p-8 flex flex-col items-center gap-2">
+            <span style={{ fontSize: '2rem', opacity: 0.5 }}>💰</span>
             <h3>No payments found</h3>
             <p>
               {filters.memberId || filters.dateFrom || filters.dateTo || filters.mode || filters.search || filters.period
@@ -413,130 +381,80 @@ const Payments = () => {
           </div>
         ) : (
           <div className="table-container">
-            <div className="table-wrapper">
-              <table className="table payments-table">
-                <thead>
-                  <tr>
-                    <th>Receipt #</th>
-                    <th>Member</th>
-                    <th>Amount</th>
-                    <th>Mode</th>
-                    <th>Plan</th>
-                    <th>Date</th>
-                    <th>Note</th>
-                    <th>Receipt</th>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Receipt #</th>
+                  <th>Member</th>
+                  <th>Amount</th>
+                  <th>Mode</th>
+                  <th>Plan</th>
+                  <th>Date</th>
+                  <th>Note</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map(payment => (
+                  <tr key={payment.id}>
+                    <td>
+                      <span className="font-mono text-sm text-gray-600">{payment.receipt_number}</span>
+                    </td>
+                    <td>
+                      <div className="font-medium">
+                        {payment.member_name || (
+                          <span className="text-red-500 italic">
+                            Deleted Member
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <span className="font-semibold text-gray-800">{formatCurrency(payment.amount)}</span>
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${payment.mode === 'cash' ? 'badge-success' : 'badge-info'}`}
+                      >
+                        {paymentModes.find(m => m.value === payment.mode)?.label || payment.mode}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-sm text-gray-600">{payment.plan_name || '-'}</span>
+                    </td>
+                    <td>
+                      <span className="text-sm text-gray-600">
+                        {formatDate(payment.paid_at)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="text-sm text-gray-500 truncate max-w-[150px]" title={payment.note}>
+                        {payment.note || '-'}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button
+                          className="button button-secondary button-sm"
+                          onClick={() => showNotification('Receipt printing not available in web demo', 'info')}
+                          title="Reprint Receipt"
+                        >
+                          🖨️
+                        </button>
+
+                        <button
+                          className="button button-secondary button-sm"
+                          onClick={() => showNotification('Receipt download not available in web demo', 'info')}
+                          title="Download Receipt"
+                        >
+                          ⬇️
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {payments.map(payment => (
-                    <tr key={payment.id}>
-                      <td>
-                        <span className="receipt-code">{payment.receipt_number}</span>
-                      </td>
-                      <td>
-                        <div className="member-info">
-                          <div className="member-name">
-                            {payment.member_name || (
-                              <span className="deleted-member">
-                                <em>Deleted Member</em>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="payment-amount">{formatCurrency(payment.amount)}</span>
-                      </td>
-                      <td>
-                        <span 
-                          className="payment-mode-badge"
-                          style={{ backgroundColor: getPaymentModeColor(payment.mode) }}
-                        >
-                          {paymentModes.find(m => m.value === payment.mode)?.label || payment.mode}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="plan-name">{payment.plan_name || '-'}</span>
-                      </td>
-                      <td>
-                        <div className="payment-date">
-                          {formatDate(payment.paid_at)}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="payment-note" title={payment.note}>
-                          {payment.note || '-'}
-                        </div>
-                      </td>
-                      <td style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          className="button button-sm"
-                          onClick={async () => {
-                            try {
-                              const resp = await window.api.report.generateReceipt({ paymentId: payment.id });
-                              if (resp.success && resp.path) {
-                                await window.api.file.openPath(resp.path);
-                              } else if (resp.success && resp.path === undefined) {
-                                showNotification('Receipt generated but path not returned', 'warning');
-                              } else {
-                                showNotification('Failed to generate receipt: ' + (resp.error || resp.message), 'error');
-                              }
-                            } catch (err) {
-                              console.error('Receipt generation error:', err);
-                              showNotification('Failed to generate/open receipt', 'error');
-                            }
-                          }}
-                        >
-                          Reprint
-                        </button>
-
-                        <button
-                          className="button button-sm button-outline"
-                          onClick={async () => {
-                            try {
-                              console.log('Download button clicked for paymentId:', payment.id);
-                              if (!window.api || !window.api.report || !window.api.report.downloadReceipt) {
-                                console.warn('Download API not available in preload - falling back to generateReceipt + show folder');
-                                // Fallback: generate receipt to exports/receipts and open the folder
-                                try {
-                                  const gen = await window.api.report.generateReceipt({ paymentId: payment.id });
-                                  if (gen.success && gen.path) {
-                                    await window.api.file.showInFolder(gen.path);
-                                    showNotification('Receipt generated at: ' + gen.path, 'success');
-                                  } else {
-                                    showNotification('Failed to generate receipt: ' + (gen.error || gen.message), 'error');
-                                  }
-                                } catch (fallbackErr) {
-                                  console.error('Fallback receipt error:', fallbackErr);
-                                  showNotification('Download not available and fallback failed', 'error');
-                                }
-                                return;
-                              }
-
-                              const resp = await window.api.report.downloadReceipt({ paymentId: payment.id });
-                              console.log('Download receipt response:', resp);
-                              if (resp.success && resp.path) {
-                                showNotification(resp.message || 'Receipt saved successfully!', 'success');
-                              } else if (resp.message === 'Save canceled by user') {
-                                // user canceled the save dialog
-                                console.log('User canceled save dialog');
-                              } else {
-                                showNotification('Failed to download receipt: ' + (resp.error || resp.message), 'error');
-                              }
-                            } catch (err) {
-                              console.error('Download receipt error:', err);
-                              showNotification('Failed to download receipt: ' + (err.message || err), 'error');
-                            }
-                          }}
-                        >
-                          Download
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -544,128 +462,116 @@ const Payments = () => {
       {/* Add Payment Modal */}
       {showAddPayment && (
         <div className="modal-overlay" onClick={() => setShowAddPayment(false)}>
-          <div className="modal payment-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>💰 Add New Payment</h2>
-              <button 
+              <h3 className="modal-title">💰 Add New Payment</h3>
+              <button
+                type="button"
                 onClick={() => setShowAddPayment(false)}
-                className="modal-close"
-                aria-label="Close modal"
+                className="modal-close-button"
               >
                 ×
               </button>
             </div>
 
-            <form onSubmit={handleAddPayment} className="payment-form">
+            <form onSubmit={handleAddPayment}>
               <div className="modal-body">
-                <div className="form-section">
+                <div className="form-group">
+                  <label className="form-label required">Member *</label>
+                  <select
+                    value={newPayment.memberId}
+                    onChange={(e) => setNewPayment(prev => ({ ...prev, memberId: e.target.value }))}
+                    className="select"
+                    required
+                  >
+                    <option value="">Select Member</option>
+                    {members.map(member => (
+                      <option key={member.id} value={member.id}>
+                        {member.name} - {member.email || member.phone}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="form-group">
-                    <label htmlFor="payment-member">Member *</label>
+                    <label className="form-label required">Membership Plan *</label>
                     <select
-                      id="payment-member"
-                      value={newPayment.memberId}
-                      onChange={(e) => setNewPayment(prev => ({ ...prev, memberId: e.target.value }))}
-                      className="form-control"
+                      value={newPayment.planId}
+                      onChange={(e) => handlePlanSelection(e.target.value)}
+                      className="select"
                       required
                     >
-                      <option value="">Select Member</option>
-                      {members.map(member => (
-                        <option key={member.id} value={member.id}>
-                          {member.name} - {member.email || member.phone}
+                      <option value="">Select Plan</option>
+                      {membershipPlans.map(plan => (
+                        <option key={plan.id} value={plan.id}>
+                          {plan.name} - ₹{plan.price}
                         </option>
                       ))}
                     </select>
                   </div>
-                </div>
 
-                <div className="form-section">
-                  <div className="form-grid form-grid-3">
-                    <div className="form-group">
-                      <label htmlFor="payment-plan">Membership Plan *</label>
-                      <select
-                        id="payment-plan"
-                        value={newPayment.planId}
-                        onChange={(e) => handlePlanSelection(e.target.value)}
-                        className="form-control"
-                        required
-                      >
-                        <option value="">Select Plan</option>
-                        {membershipPlans.map(plan => (
-                          <option key={plan.id} value={plan.id}>
-                            {plan.name} - ₹{plan.price}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="payment-amount">Amount</label>
-                      <div className="input-group">
-                        <span className="input-prefix">₹</span>
-                        <input
-                          id="payment-amount"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={newPayment.amount}
-                          className="form-control"
-                          placeholder="Auto-filled"
-                          readOnly
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="payment-mode">Payment Mode</label>
-                      <select
-                        id="payment-mode"
-                        value={newPayment.mode}
-                        onChange={(e) => setNewPayment(prev => ({ ...prev, mode: e.target.value }))}
-                        className="form-control"
-                      >
-                        {paymentModes.map(mode => (
-                          <option key={mode.value} value={mode.value}>
-                            {mode.label}
-                          </option>
-                        ))}
-                      </select>
+                  <div className="form-group">
+                    <label className="form-label">Amount</label>
+                    <div className="relative">
+                      <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>₹</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newPayment.amount}
+                        className="input"
+                        style={{ paddingLeft: '2rem' }}
+                        placeholder="Auto-filled"
+                        readOnly
+                      />
                     </div>
                   </div>
                 </div>
 
-                <div className="form-section">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="form-group">
-                    <label htmlFor="receipt-number">Receipt Number</label>
+                    <label className="form-label">Payment Mode</label>
+                    <select
+                      value={newPayment.mode}
+                      onChange={(e) => setNewPayment(prev => ({ ...prev, mode: e.target.value }))}
+                      className="select"
+                    >
+                      {paymentModes.map(mode => (
+                        <option key={mode.value} value={mode.value}>
+                          {mode.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Receipt Number</label>
                     <input
-                      id="receipt-number"
                       type="text"
                       value={newPayment.receiptNumber}
                       onChange={(e) => setNewPayment(prev => ({ ...prev, receiptNumber: e.target.value }))}
-                      className="form-control"
+                      className="input"
                       placeholder="Auto-generated if empty"
                     />
-                    <small className="form-help">Leave empty to auto-generate</small>
                   </div>
                 </div>
 
-                <div className="form-section">
-                  <div className="form-group">
-                    <label htmlFor="payment-note">Note</label>
-                    <textarea
-                      id="payment-note"
-                      value={newPayment.note}
-                      onChange={(e) => setNewPayment(prev => ({ ...prev, note: e.target.value }))}
-                      className="form-control"
-                      rows="3"
-                      placeholder="Optional payment note..."
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Note</label>
+                  <textarea
+                    value={newPayment.note}
+                    onChange={(e) => setNewPayment(prev => ({ ...prev, note: e.target.value }))}
+                    className="input"
+                    rows="3"
+                    placeholder="Optional payment note..."
+                  />
                 </div>
               </div>
 
               <div className="modal-footer">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowAddPayment(false)}
                   className="button button-secondary"
                 >

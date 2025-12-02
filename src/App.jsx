@@ -1,87 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import LoginPage from './components/LoginPage';
 import Layout from './components/Layout';
 import NotificationContainer from './components/NotificationContainer';
-import Dashboard from './pages/Dashboard';
-import Members from './pages/Members';
-import Payments from './pages/Payments';
-import Expenditures from './pages/Expenditures';
-import Attendance from './pages/Attendance.jsx';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import './styles/globals.css';
+
+// Lazy load pages
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Members = lazy(() => import('./pages/Members'));
+const Payments = lazy(() => import('./pages/Payments'));
+const Expenditures = lazy(() => import('./pages/Expenditures'));
+const Attendance = lazy(() => import('./pages/Attendance.jsx'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+// Loading Fallback
+const PageLoader = () => (
+  <div className="loading" style={{ height: '100%', minHeight: '400px' }}>
+    <div className="loading-spinner" />
+  </div>
+);
 
 // Main App Content
 const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pageProps, setPageProps] = useState({});
-  const [apiReady, setApiReady] = useState(false);
-
-  // Check if Electron API is available
-  useEffect(() => {
-    let attempts = 0;
-    const maxAttempts = 50; // Reduce max attempts from infinite to 50 (5 seconds)
-    
-    const checkApi = () => {
-      attempts++;
-      if (typeof window !== 'undefined' && window.api) {
-        setApiReady(true);
-        console.log('Electron API is ready');
-      } else if (attempts >= maxAttempts) {
-        // If API not available after 5 seconds, continue anyway (might be running in browser)
-        console.warn('Electron API not found after 5 seconds, continuing without it');
-        setApiReady(true);
-      } else {
-        console.log(`Checking for Electron API (${attempts}/${maxAttempts})...`);
-        setTimeout(checkApi, 100);
-      }
-    };
-    checkApi();
-  }, []);
-
-  const handlePageChange = (page, props = {}) => {
-    setCurrentPage(page);
-    setPageProps(props);
-  };
-
-  // Show loading while API is not ready
-  if (!apiReady) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        flexDirection: 'column',
-        gap: '1rem',
-        backgroundColor: '#f5f7fa'
-      }}>
-        <div style={{
-          padding: '2rem',
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          textAlign: 'center',
-          maxWidth: '300px'
-        }}>
-          <div className="loading-spinner" style={{ 
-            width: '40px', 
-            height: '40px',
-            margin: '0 auto 1rem auto'
-          }} />
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#2d3748' }}>
-            Library Management System
-          </h3>
-          <p style={{ color: '#718096', fontSize: '0.875rem' }}>
-            Initializing application...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -95,6 +40,11 @@ const AppContent = () => {
   if (!isAuthenticated) {
     return <LoginPage />;
   }
+
+  const handlePageChange = (page, props = {}) => {
+    setCurrentPage(page);
+    setPageProps(props);
+  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -117,8 +67,8 @@ const AppContent = () => {
           <div className="card text-center">
             <h2>Page Under Construction</h2>
             <p>The {currentPage} page is coming soon!</p>
-            <button 
-              onClick={() => handlePageChange('dashboard')} 
+            <button
+              onClick={() => handlePageChange('dashboard')}
               className="button button-primary mt-4"
             >
               Back to Dashboard
@@ -130,7 +80,9 @@ const AppContent = () => {
 
   return (
     <Layout currentPage={currentPage} onPageChange={handlePageChange}>
-      {renderPage()}
+      <Suspense fallback={<PageLoader />}>
+        {renderPage()}
+      </Suspense>
     </Layout>
   );
 };
