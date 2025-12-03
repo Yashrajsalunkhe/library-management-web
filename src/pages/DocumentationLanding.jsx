@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import SettingsWizard from '../components/SettingsWizard';
 
 const DocumentationLanding = ({ onNavigateToAuth }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showSettingsWizard, setShowSettingsWizard] = useState(false);
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -571,6 +573,14 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
                 >
                   <span>Already have an account? Sign In</span>
                 </button>
+                <button 
+                  className="btn-cta-wizard"
+                  onClick={() => setShowSettingsWizard(true)}
+                >
+                  <span className="wizard-icon">🧙‍♂️</span>
+                  <span>Try Settings Wizard</span>
+                  <span className="wizard-badge">Interactive Demo</span>
+                </button>
               </div>
             </div>
             
@@ -586,6 +596,16 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
         </div>
       </div>
     )
+  };
+
+  const handleSettingsWizardComplete = (settings) => {
+    console.log('Settings wizard completed with:', settings);
+    setShowSettingsWizard(false);
+    // You could add a success message or redirect here
+  };
+
+  const handleSettingsWizardCancel = () => {
+    setShowSettingsWizard(false);
   };
 
   return (
@@ -732,6 +752,14 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
           </div>
         </div>
       </footer>
+
+      {/* Settings Wizard Modal */}
+      {showSettingsWizard && (
+        <SettingsWizard
+          onComplete={handleSettingsWizardComplete}
+          onCancel={handleSettingsWizardCancel}
+        />
+      )}
     </div>
   );
 };

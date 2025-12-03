@@ -848,6 +848,131 @@ export const api = {
             }
         }
     },
+
+    // Add setup-related API functions
+    checkSetupStatus: async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'Not authenticated' };
+
+            const { data, error } = await supabase
+                .from('settings')
+                .select('value')
+                .eq('key', 'setup_completed')
+                .eq('user_id', user.id)
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                console.error('Error checking setup status:', error);
+                return { success: false, setupCompleted: false };
+            }
+
+            return { 
+                success: true, 
+                setupCompleted: data && data.value === 'true' 
+            };
+        } catch (error) {
+            console.error('Error in checkSetupStatus:', error);
+            return { success: false, setupCompleted: false };
+        }
+    },
+
+    markSetupCompleted: async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'Not authenticated' };
+
+            const { error } = await supabase
+                .from('settings')
+                .upsert({ 
+                    key: 'setup_completed', 
+                    value: 'true', 
+                    user_id: user.id 
+                }, { onConflict: 'key,user_id' });
+
+            if (error) {
+                console.error('Error marking setup as completed:', error);
+                return { success: false, message: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Error in markSetupCompleted:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    saveSettings: async (settingsData) => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'Not authenticated' };
+
+            // Flatten settings object for storage
+            const flattenedSettings = {};
+            
+            // Handle nested settings structure
+            Object.entries(settingsData).forEach(([section, sectionData]) => {
+                Object.entries(sectionData).forEach(([key, value]) => {
+                    // Special handling for nested objects like operatingHours
+                    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        flattenedSettings[`${section}_${key}`] = JSON.stringify(value);
+                    } else {
+                        flattenedSettings[`${section}_${key}`] = String(value);
+                    }
+                });
+            });
+
+            // Update each setting key individually
+            const updates = Object.entries(flattenedSettings).map(([key, value]) => 
+                supabase
+                    .from('settings')
+                    .upsert({ key, value, user_id: user.id }, { onConflict: 'key,user_id' })
+            );
+            
+            await Promise.all(updates);
+            return { success: true };
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            return { success: false, message: error.message };
+        }
+    },
+
+    settings: {
+        getSettings: async () => {
+            const { data, error } = await supabase
+                .from('settings')
+                .select('*');
+            
+            if (error) return handleResponse(null, error);
+            
+            // Convert array of key-value pairs to object
+            const settings = {};
+            data?.forEach(item => {
+                settings[item.key] = item.value;
+            });
+            
+            return { success: true, settings };
+        },
+        updateSettings: async (settingsData) => {
+            try {
+                // Get current user
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, message: 'Not authenticated' };
+
+                // Update each setting key individually
+                const updates = Object.entries(settingsData).map(([key, value]) => 
+                    supabase
+                        .from('settings')
+                        .upsert({ key, value, user_id: user.id }, { onConflict: 'key,user_id' })
+                );
+                
+                await Promise.all(updates);
+                return { success: true };
+            } catch (error) {
+                return { success: false, message: error.message };
+            }
+        }
+    },
     biometric: {
         testConnection: async () => {
             return { success: false, message: 'Biometric not supported in web version' };

@@ -14,6 +14,8 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [setupCompleted, setSetupCompleted] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(false);
 
   useEffect(() => {
     // Clear stored authentication on app start to always show login page
@@ -21,12 +23,40 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  const checkSetupStatus = async () => {
+    try {
+      setCheckingSetup(true);
+      const result = await api.checkSetupStatus();
+      setSetupCompleted(result.setupCompleted || false);
+      return result.setupCompleted || false;
+    } catch (error) {
+      console.error('Error checking setup status:', error);
+      setSetupCompleted(false);
+      return false;
+    } finally {
+      setCheckingSetup(false);
+    }
+  };
+
+  const markSetupCompleted = async () => {
+    try {
+      await api.markSetupCompleted();
+      setSetupCompleted(true);
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking setup as completed:', error);
+      return { success: false, message: error.message };
+    }
+  };
+
   const login = async (credentials) => {
     try {
       const result = await api.auth.login(credentials);
       if (result.success) {
         setUser(result.user);
         localStorage.setItem('library_user', JSON.stringify(result.user));
+        // Check setup status after successful login
+        await checkSetupStatus();
         return { success: true };
       } else {
         return { success: false, message: result.message };
@@ -111,7 +141,11 @@ export const AuthProvider = ({ children }) => {
     requestPasswordChangeOTP,
     changePassword,
     changeUsername,
+    checkSetupStatus,
+    markSetupCompleted,
     loading,
+    checkingSetup,
+    setupCompleted,
     isAuthenticated: !!user
   };
 

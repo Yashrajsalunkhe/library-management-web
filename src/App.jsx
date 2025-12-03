@@ -7,6 +7,7 @@ import Layout from './components/Layout';
 import NotificationContainer from './components/NotificationContainer';
 import InitialSetup from './pages/InitialSetup';
 import DocumentationLanding from './pages/DocumentationLanding';
+import OnboardingSetup from './components/OnboardingSetup';
 import './styles/globals.css';
 
 // Lazy load pages
@@ -27,7 +28,7 @@ const PageLoader = () => (
 
 // Main App Content
 const AppContent = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, setupCompleted, checkingSetup } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pageProps, setPageProps] = useState({});
   const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
@@ -62,7 +63,12 @@ const AppContent = () => {
     setAuthMode(null);
   };
 
-  if (loading) {
+  const handleSetupComplete = () => {
+    // Setup completed, navigate to dashboard
+    setCurrentPage('dashboard');
+  };
+
+  if (loading || checkingSetup) {
     return (
       <div className="loading">
         <div className="loading-spinner" />
@@ -92,6 +98,11 @@ const AppContent = () => {
       initialMode={authMode} 
       onBackToDocumentation={handleBackToDocumentation} 
     />;
+  }
+
+  // Show onboarding setup if authenticated but setup not completed
+  if (isAuthenticated && !setupCompleted) {
+    return <OnboardingSetup onComplete={handleSetupComplete} />;
   }
 
   const handlePageChange = (page, props = {}) => {
