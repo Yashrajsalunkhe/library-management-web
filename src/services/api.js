@@ -80,29 +80,9 @@ export const api = {
         },
         signUp: async ({ email, password, username, fullName }) => {
             try {
-                // Test connection first
-                console.log('Testing Supabase connection...');
+                console.log('Starting signup process for:', email);
                 
-                // 1. Check if username already exists
-                const { data: existingProfile, error: checkError } = await supabase
-                    .from('profiles')
-                    .select('username')
-                    .eq('username', username)
-                    .single();
-
-                // Handle connection errors
-                if (checkError && checkError.message && checkError.message.includes('Failed to fetch')) {
-                    console.error('Network error during username check:', checkError);
-                    return { 
-                        success: false, 
-                        message: 'Unable to connect to the database. Please check your internet connection and try again.' 
-                    };
-                }
-
-                if (existingProfile) {
-                    return { success: false, message: 'Username already exists' };
-                }
-
+                // Skip username check for now and let the database handle uniqueness
                 // 2. Sign up with Supabase Auth
                 const { data, error } = await supabase.auth.signUp({
                     email,
@@ -124,7 +104,15 @@ export const api = {
                             message: 'Unable to connect to the authentication service. Please check your connection and try again.' 
                         };
                     }
+                    // Handle specific auth errors
+                    if (error.message.includes('already registered')) {
+                        return { success: false, message: 'This email is already registered. Please try logging in instead.' };
+                    }
                     return { success: false, message: error.message };
+                }
+
+                if (!data.user) {
+                    return { success: false, message: 'Failed to create user account' };
                 }
 
                 return { 
@@ -182,6 +170,10 @@ export const api = {
             return handleResponse(data, error);
         },
         add: async (memberData) => {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'Not authenticated' };
+
             // Transform camelCase to snake_case for database columns
             const { planId, birthDate, idNumber, idDocumentType, seatNo, joinDate, endDate, ...rest } = memberData;
             const dbData = { 
@@ -192,7 +184,8 @@ export const api = {
                 id_document_type: idDocumentType || null,
                 seat_no: seatNo || null,
                 join_date: joinDate,
-                end_date: endDate
+                end_date: endDate,
+                user_id: user.id // Add user_id for isolation
             };
 
             const { data, error } = await supabase
@@ -521,11 +514,21 @@ export const api = {
             return handleResponse(data, error);
         },
         mark: async ({ memberId, status }) => {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'Not authenticated' };
+
             // Simple check-in/out logic
             // This is a simplified version. Real logic might need to check if already checked in.
             const { data, error } = await supabase
                 .from('attendance')
-                .insert([{ member_id: memberId, status, check_in: new Date().toISOString(), source: 'web' }])
+                .insert([{ 
+                    member_id: memberId, 
+                    status, 
+                    check_in: new Date().toISOString(), 
+                    source: 'web',
+                    user_id: user.id // Add user_id for isolation
+                }])
                 .select()
                 .single();
             return handleResponse(data, error);
@@ -560,11 +563,16 @@ export const api = {
             return handleResponse(data, error);
         },
         add: async (paymentData) => {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'Not authenticated' };
+
             const { memberId, planId, ...rest } = paymentData;
             const dbData = {
                 ...rest,
                 member_id: memberId,
-                payment_date: new Date().toISOString()
+                payment_date: new Date().toISOString(),
+                user_id: user.id // Add user_id for isolation
             };
 
             const { data, error } = await supabase
@@ -589,9 +597,18 @@ export const api = {
             return handleResponse(data, error);
         },
         add: async (data) => {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'Not authenticated' };
+
+            const dbData = {
+                ...data,
+                user_id: user.id // Add user_id for isolation
+            };
+
             const { data: result, error } = await supabase
                 .from('expenditures')
-                .insert([data])
+                .insert([dbData])
                 .select()
                 .single();
             return handleResponse(result, error);
@@ -761,9 +778,18 @@ export const api = {
             return handleResponse(data, error);
         },
         add: async (planData) => {
+            // Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return { success: false, message: 'Not authenticated' };
+
+            const dbData = {
+                ...planData,
+                user_id: user.id // Add user_id for isolation
+            };
+
             const { data, error } = await supabase
                 .from('membership_plans')
-                .insert([planData])
+                .insert([dbData])
                 .select()
                 .single();
             return handleResponse(data, error);
@@ -804,11 +830,15 @@ export const api = {
         },
         updateSettings: async (settingsData) => {
             try {
+                // Get current user
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, message: 'Not authenticated' };
+
                 // Update each setting key individually
                 const updates = Object.entries(settingsData).map(([key, value]) => 
                     supabase
                         .from('settings')
-                        .upsert({ key, value }, { onConflict: 'key' })
+                        .upsert({ key, value, user_id: user.id }, { onConflict: 'key,user_id' })
                 );
                 
                 await Promise.all(updates);
