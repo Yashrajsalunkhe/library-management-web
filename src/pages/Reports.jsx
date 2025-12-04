@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { api } from '../services/api';
+import ExcelJS from 'exceljs';
 
 const Reports = ({ initialTab }) => {
   const [activeTab, setActiveTab] = useState(initialTab?.tab || 'overview');
@@ -165,6 +166,229 @@ const Reports = ({ initialTab }) => {
     });
   };
 
+  const convertToCSV = (data, type) => {
+    if (!data || data.length === 0) return '';
+
+    let headers = [];
+    let rows = [];
+
+    switch (type) {
+      case 'attendance':
+        headers = ['Date', 'Member Name', 'Member ID', 'Check In', 'Check Out', 'Duration', 'Source'];
+        rows = data.map(record => {
+          const checkIn = record.check_in ? new Date(record.check_in) : null;
+          const checkOut = record.check_out ? new Date(record.check_out) : null;
+          const duration = checkIn && checkOut ? 
+            `${Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 100)) / 10}h` : 
+            (checkOut ? '-' : 'Active');
+          
+          return [
+            record.date ? new Date(record.date).toLocaleDateString() : '',
+            record.member_name || '',
+            record.member_id || '',
+            checkIn ? checkIn.toLocaleString() : '',
+            checkOut ? checkOut.toLocaleString() : '',
+            duration,
+            record.source || ''
+          ];
+        });
+        break;
+
+      case 'payments':
+        headers = ['Date', 'Receipt No', 'Member Name', 'Amount', 'Payment Method', 'Type', 'Notes'];
+        rows = data.map(payment => [
+          payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : '',
+          payment.receipt_number || payment.id || '',
+          payment.member_name || '',
+          `₹${payment.amount || 0}`,
+          payment.payment_method || payment.mode || '',
+          payment.type || '',
+          payment.notes || payment.note || ''
+        ]);
+        break;
+
+      case 'expenditures':
+        headers = ['Date', 'Title', 'Category', 'Amount', 'Description'];
+        rows = data.map(exp => [
+          exp.date ? new Date(exp.date).toLocaleDateString() : '',
+          exp.title || '',
+          exp.category || '',
+          `₹${exp.amount || 0}`,
+          exp.description || ''
+        ]);
+        break;
+
+      case 'members':
+        headers = ['Name', 'Email', 'Phone', 'Status', 'Plan', 'Seat No', 'Join Date', 'End Date'];
+        rows = data.map(member => [
+          member.name || '',
+          member.email || '',
+          member.phone || '',
+          member.status || '',
+          member.plan_name || member.membership_plans?.name || '',
+          member.seat_no || '',
+          member.join_date ? new Date(member.join_date).toLocaleDateString() : '',
+          member.end_date ? new Date(member.end_date).toLocaleDateString() : ''
+        ]);
+        break;
+
+      default:
+        return '';
+    }
+
+    // Escape CSV fields and join
+    const escapeCSV = (field) => {
+      const str = String(field || '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent = [
+      headers.map(escapeCSV).join(','),
+      ...rows.map(row => row.map(escapeCSV).join(','))
+    ].join('\n');
+
+    return csvContent;
+  };
+
+  const convertToExcel = async (data, type) => {
+    // Create a new workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(type.charAt(0).toUpperCase() + type.slice(1));
+
+    let columns = [];
+    let rows = [];
+
+    switch (type) {
+      case 'attendance':
+        columns = [
+          { header: 'Date', key: 'date', width: 15 },
+          { header: 'Member Name', key: 'memberName', width: 20 },
+          { header: 'Member ID', key: 'memberId', width: 12 },
+          { header: 'Check In', key: 'checkIn', width: 20 },
+          { header: 'Check Out', key: 'checkOut', width: 20 },
+          { header: 'Duration', key: 'duration', width: 12 },
+          { header: 'Source', key: 'source', width: 12 }
+        ];
+        rows = data.map(record => {
+          const checkIn = record.check_in ? new Date(record.check_in) : null;
+          const checkOut = record.check_out ? new Date(record.check_out) : null;
+          const duration = checkIn && checkOut ? 
+            `${Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 100)) / 10}h` : 
+            (checkOut ? '-' : 'Active');
+          
+          return {
+            date: record.date ? new Date(record.date).toLocaleDateString() : '',
+            memberName: record.member_name || '',
+            memberId: record.member_id || '',
+            checkIn: checkIn ? checkIn.toLocaleString() : '',
+            checkOut: checkOut ? checkOut.toLocaleString() : '',
+            duration: duration,
+            source: record.source || ''
+          };
+        });
+        break;
+
+      case 'payments':
+        columns = [
+          { header: 'Date', key: 'date', width: 15 },
+          { header: 'Receipt No', key: 'receiptNo', width: 20 },
+          { header: 'Member Name', key: 'memberName', width: 20 },
+          { header: 'Amount', key: 'amount', width: 12 },
+          { header: 'Payment Method', key: 'method', width: 15 },
+          { header: 'Type', key: 'type', width: 12 },
+          { header: 'Notes', key: 'notes', width: 30 }
+        ];
+        rows = data.map(payment => ({
+          date: payment.payment_date ? new Date(payment.payment_date).toLocaleDateString() : '',
+          receiptNo: payment.receipt_number || payment.id || '',
+          memberName: payment.member_name || '',
+          amount: payment.amount || 0,
+          method: payment.payment_method || payment.mode || '',
+          type: payment.type || '',
+          notes: payment.notes || payment.note || ''
+        }));
+        break;
+
+      case 'expenditures':
+        columns = [
+          { header: 'Date', key: 'date', width: 15 },
+          { header: 'Title', key: 'title', width: 25 },
+          { header: 'Category', key: 'category', width: 15 },
+          { header: 'Amount', key: 'amount', width: 12 },
+          { header: 'Description', key: 'description', width: 35 }
+        ];
+        rows = data.map(exp => ({
+          date: exp.date ? new Date(exp.date).toLocaleDateString() : '',
+          title: exp.title || '',
+          category: exp.category || '',
+          amount: exp.amount || 0,
+          description: exp.description || ''
+        }));
+        break;
+
+      case 'members':
+        columns = [
+          { header: 'Name', key: 'name', width: 20 },
+          { header: 'Email', key: 'email', width: 25 },
+          { header: 'Phone', key: 'phone', width: 15 },
+          { header: 'Status', key: 'status', width: 12 },
+          { header: 'Plan', key: 'plan', width: 18 },
+          { header: 'Seat No', key: 'seatNo', width: 10 },
+          { header: 'Join Date', key: 'joinDate', width: 15 },
+          { header: 'End Date', key: 'endDate', width: 15 }
+        ];
+        rows = data.map(member => ({
+          name: member.name || '',
+          email: member.email || '',
+          phone: member.phone || '',
+          status: member.status || '',
+          plan: member.plan_name || member.membership_plans?.name || '',
+          seatNo: member.seat_no || '',
+          joinDate: member.join_date ? new Date(member.join_date).toLocaleDateString() : '',
+          endDate: member.end_date ? new Date(member.end_date).toLocaleDateString() : ''
+        }));
+        break;
+
+      default:
+        return null;
+    }
+
+    // Set columns
+    worksheet.columns = columns;
+
+    // Add rows
+    worksheet.addRows(rows);
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2563EB' }
+    };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+    worksheet.getRow(1).height = 25;
+
+    // Add borders to all cells
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+    });
+
+    // Generate Excel file
+    const buffer = await workbook.xlsx.writeBuffer();
+    return buffer;
+  };
+
   const exportReport = async (type, format = 'csv') => {
     setExportLoading(true);
     try {
@@ -178,23 +402,36 @@ const Reports = ({ initialTab }) => {
 
       console.log(`Exporting ${dataToExport.length} ${type} records`);
 
-      const result = await api.report.exportWithDialog({
-        type,
-        format,
-        dateRange,
-        data: dataToExport
-      });
+      let blob, extension;
 
-      if (result.success) {
-        const formatName = format.toUpperCase();
-        alert(`✅ ${type.charAt(0).toUpperCase() + type.slice(1)} report exported successfully!\n\n📊 Format: ${formatName}\n📁 Records: ${result.recordCount || dataToExport.length}\n📅 Period: ${dateRange.from} to ${dateRange.to}\n\n📂 Saved to: ${result.filepath}\n\nThe file explorer will open automatically to show your exported file.`);
-      } else if (result.message === 'Export cancelled by user') {
-        console.log('Export cancelled by user');
-        // Don't show an error alert for user cancellation
+      if (format === 'csv') {
+        const content = convertToCSV(dataToExport, type);
+        blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        extension = 'csv';
+      } else if (format === 'xlsx') {
+        const buffer = await convertToExcel(dataToExport, type);
+        blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        extension = 'xlsx';
       } else {
-        console.error('Export failed:', result.message);
-        alert(`❌ Failed to export ${type} report:\n\n${result.message}\n\nPlease try again or check the console for more details.`);
+        // Fallback to JSON
+        const content = JSON.stringify(dataToExport, null, 2);
+        blob = new Blob([content], { type: 'application/json' });
+        extension = 'json';
       }
+
+      // Create download
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const filename = `${type}_report_${dateRange.from}_to_${dateRange.to}.${extension}`;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      const formatName = format.toUpperCase();
+      alert(`✅ ${type.charAt(0).toUpperCase() + type.slice(1)} report exported successfully!\n\n📊 Format: ${formatName}\n📁 Records: ${dataToExport.length}\n📅 Period: ${dateRange.from} to ${dateRange.to}\n\n📂 File: ${filename}\n\nThe file has been downloaded to your Downloads folder.`);
     } catch (error) {
       console.error('Export failed:', error);
       alert(`❌ Export failed due to an unexpected error:\n\n${error.message}\n\nPlease try again or contact support if the problem persists.`);

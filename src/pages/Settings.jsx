@@ -237,19 +237,104 @@ const Settings = () => {
           // Transform flat settings structure from DB to nested structure for UI
           const transformedSettings = { ...settings }; // Start with defaults
           
-          Object.entries(response.settings).forEach(([key, value]) => {
-            // Handle nested keys like 'general.totalSeats'
-            if (key === 'total_seats') {
-              transformedSettings.general = transformedSettings.general || {};
-              transformedSettings.general.totalSeats = value ? value.toString() : '50';
-            } else if (key === 'library_name') {
-              transformedSettings.general = transformedSettings.general || {};
-              transformedSettings.general.libraryName = value || 'Library Management System';
+          // Map database keys to UI structure
+          const dbSettings = response.settings;
+          
+          // General Settings
+          if (dbSettings.library_name !== undefined) {
+            transformedSettings.general.libraryName = dbSettings.library_name;
+          }
+          if (dbSettings.library_address !== undefined) {
+            transformedSettings.general.address = dbSettings.library_address;
+          }
+          if (dbSettings.library_phone !== undefined) {
+            transformedSettings.general.phone = dbSettings.library_phone;
+          }
+          if (dbSettings.library_email !== undefined) {
+            transformedSettings.general.email = dbSettings.library_email;
+          }
+          if (dbSettings.library_website !== undefined) {
+            transformedSettings.general.website = dbSettings.library_website;
+          }
+          if (dbSettings.total_seats !== undefined) {
+            transformedSettings.general.totalSeats = dbSettings.total_seats.toString();
+          }
+          if (dbSettings.operating_hours !== undefined) {
+            try {
+              transformedSettings.general.operatingHours = JSON.parse(dbSettings.operating_hours);
+            } catch (e) {
+              console.error('Error parsing operating hours:', e);
             }
-            // Add more transformations as needed for other settings
-          });
+          }
+          
+          // Membership Settings
+          if (dbSettings.deposit_amount !== undefined) {
+            transformedSettings.membership.depositAmount = dbSettings.deposit_amount.toString();
+          }
+          
+          // Attendance Settings
+          if (dbSettings.auto_mark_absent !== undefined) {
+            transformedSettings.attendance.autoMarkAbsent = dbSettings.auto_mark_absent === 'true' || dbSettings.auto_mark_absent === true;
+          }
+          if (dbSettings.absent_after_hours !== undefined) {
+            transformedSettings.attendance.absentAfterHours = dbSettings.absent_after_hours.toString();
+          }
+          if (dbSettings.auto_checkout_hours !== undefined) {
+            transformedSettings.attendance.autoCheckOutHours = dbSettings.auto_checkout_hours.toString();
+          }
+          
+          // Payment Settings
+          if (dbSettings.currency !== undefined) {
+            transformedSettings.payment.currency = dbSettings.currency;
+          }
+          if (dbSettings.accept_cash !== undefined) {
+            transformedSettings.payment.acceptCash = dbSettings.accept_cash === 'true' || dbSettings.accept_cash === true;
+          }
+          if (dbSettings.accept_online !== undefined) {
+            transformedSettings.payment.acceptOnline = dbSettings.accept_online === 'true' || dbSettings.accept_online === true;
+          }
+          
+          // Notification Settings
+          if (dbSettings.enable_email_notifications !== undefined) {
+            transformedSettings.notifications.enableEmailNotifications = dbSettings.enable_email_notifications === 'true' || dbSettings.enable_email_notifications === true;
+          }
+          if (dbSettings.enable_sms_notifications !== undefined) {
+            transformedSettings.notifications.enableSMSNotifications = dbSettings.enable_sms_notifications === 'true' || dbSettings.enable_sms_notifications === true;
+          }
+          if (dbSettings.membership_expiry_reminder !== undefined) {
+            transformedSettings.notifications.membershipExpiryReminder = dbSettings.membership_expiry_reminder === 'true' || dbSettings.membership_expiry_reminder === true;
+          }
+          if (dbSettings.reminder_days_before !== undefined) {
+            transformedSettings.notifications.reminderDaysBefore = dbSettings.reminder_days_before.toString();
+          }
+          if (dbSettings.birthday_wishes !== undefined) {
+            transformedSettings.notifications.birthdayWishes = dbSettings.birthday_wishes === 'true' || dbSettings.birthday_wishes === true;
+          }
+          
+          // Security Settings
+          if (dbSettings.session_timeout !== undefined) {
+            transformedSettings.security.sessionTimeout = dbSettings.session_timeout.toString();
+          }
+          if (dbSettings.enable_biometric !== undefined) {
+            transformedSettings.security.enableBiometric = dbSettings.enable_biometric === 'true' || dbSettings.enable_biometric === true;
+          }
+          if (dbSettings.two_factor_auth !== undefined) {
+            transformedSettings.security.twoFactorAuth = dbSettings.two_factor_auth === 'true' || dbSettings.two_factor_auth === true;
+          }
+          
+          // Backup Settings
+          if (dbSettings.auto_backup !== undefined) {
+            transformedSettings.backup.autoBackup = dbSettings.auto_backup === 'true' || dbSettings.auto_backup === true;
+          }
+          if (dbSettings.backup_frequency !== undefined) {
+            transformedSettings.backup.backupFrequency = dbSettings.backup_frequency;
+          }
+          if (dbSettings.keep_backups_for !== undefined) {
+            transformedSettings.backup.keepBackupsFor = dbSettings.keep_backups_for.toString();
+          }
 
           setSettings(transformedSettings);
+          console.log('Transformed settings:', transformedSettings); // Debug log
         } else {
           console.log('No settings found, using defaults'); // Debug log
         }

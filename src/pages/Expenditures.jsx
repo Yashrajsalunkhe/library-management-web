@@ -45,6 +45,7 @@ const Expenditures = ({ initialAction = null }) => {
       const result = await api.expenditure.list(filters);
       if (result.success) {
         setExpenditures(result.data);
+        calculateStats(result.data); // Calculate stats from the data
       }
     } catch (err) {
       error('Failed to load expenditures');
@@ -53,11 +54,33 @@ const Expenditures = ({ initialAction = null }) => {
     }
   };
 
+  const calculateStats = (data) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Calculate total expenditure
+    const totalExpenditure = data.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+    
+    // Calculate today's expenditure
+    const todayExpenditure = data
+      .filter(exp => exp.date && exp.date.startsWith(today))
+      .reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
+    
+    setStats({
+      totalExpenditure,
+      todayExpenditure,
+      todayNetIncome: 0 // This will be updated if needed
+    });
+  };
+
   const loadStats = async () => {
     try {
       const result = await api.dashboard.stats();
       if (result.success) {
-        setStats(result.data);
+        // Merge dashboard stats with calculated expenditure stats
+        setStats(prev => ({
+          ...prev,
+          todayNetIncome: result.data.todayNetIncome
+        }));
       }
     } catch (err) {
       error('Failed to load expenditure stats');

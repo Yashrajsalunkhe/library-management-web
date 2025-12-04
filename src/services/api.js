@@ -11,6 +11,14 @@ const handleResponse = (data, error) => {
 
 export const api = {
     auth: {
+        getSession: async () => {
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                return { data, error };
+            } catch (err) {
+                return { data: null, error: err };
+            }
+        },
         login: async ({ email, password }) => {
             try {
                 let loginEmail = email;
@@ -132,6 +140,22 @@ export const api = {
             }
         },
     },
+    profiles: {
+        get: async (userId) => {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+                
+                if (error) return { success: false, message: error.message };
+                return { success: true, data };
+            } catch (err) {
+                return { success: false, message: err.message };
+            }
+        },
+    },
     member: {
         list: async (filters = {}) => {
             let query = supabase.from('members').select('*');
@@ -176,13 +200,17 @@ export const api = {
 
             // Transform camelCase to snake_case for database columns
             const { planId, birthDate, idNumber, idDocumentType, seatNo, joinDate, endDate, ...rest } = memberData;
+            
+            // Clean up seat number - trim and convert empty to null
+            const cleanSeatNo = seatNo && String(seatNo).trim() !== '' ? String(seatNo).trim() : null;
+            
             const dbData = { 
                 ...rest, 
                 plan_id: planId || null, // Convert empty string to null
                 birth_date: birthDate || null,
                 id_number: idNumber || null,
                 id_document_type: idDocumentType || null,
-                seat_no: seatNo || null,
+                seat_no: cleanSeatNo,
                 join_date: joinDate,
                 end_date: endDate,
                 user_id: user.id // Add user_id for isolation
@@ -198,13 +226,17 @@ export const api = {
         update: async (memberData) => {
             // Transform camelCase to snake_case for database columns
             const { id, planId, birthDate, idNumber, idDocumentType, seatNo, joinDate, endDate, ...rest } = memberData;
+            
+            // Clean up seat number - trim and convert empty to null
+            const cleanSeatNo = seatNo && String(seatNo).trim() !== '' ? String(seatNo).trim() : null;
+            
             const dbData = { 
                 ...rest, 
                 plan_id: planId || null, // Convert empty string to null
                 birth_date: birthDate || null,
                 id_number: idNumber || null,
                 id_document_type: idDocumentType || null,
-                seat_no: seatNo || null,
+                seat_no: cleanSeatNo,
                 join_date: joinDate,
                 end_date: endDate
             };
@@ -233,12 +265,44 @@ export const api = {
             return handleResponse(data, error);
         },
         permanentDelete: async (id) => {
-            const { error } = await supabase.from('members').delete().eq('id', id);
-            return handleResponse(null, error);
+            try {
+                // With optimized schema:
+                // - Attendance records will CASCADE delete (they're dependent on member)
+                // - Payment records will have member_id SET to NULL (preserve for accounting)
+                // - Biometric data should CASCADE delete (if table exists)
+                
+                // Only manually delete biometric data if the table exists
+                // (attendance and payments are handled by database constraints)
+                try {
+                    await supabase.from('biometric_data').delete().eq('member_id', id);
+                } catch (bioError) {
+                    // Biometric table might not exist, ignore error
+                    console.log('Biometric data table not found or already deleted');
+                }
+                
+                // Delete the member - database constraints will handle the rest
+                const { error } = await supabase.from('members').delete().eq('id', id);
+                
+                if (error) {
+                    return handleResponse(null, error);
+                }
+                
+                return { 
+                    success: true, 
+                    message: 'Member deleted. Payment history preserved for accounting.' 
+                };
+            } catch (err) {
+                console.error('Error in permanentDelete:', err);
+                return { success: false, message: err.message };
+            }
         },
         getNextSeatNumber: async () => {
             try {
-                // 1. Get total seats from settings
+                // 1. Get current user for proper isolation
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, message: 'Not authenticated' };
+
+                // 2. Get total seats from settings
                 const { data: settingData, error: settingError } = await supabase
                     .from('settings')
                     .select('value')
@@ -247,16 +311,17 @@ export const api = {
 
                 const totalSeats = settingData?.value ? parseInt(settingData.value) : 50;
 
-                // 2. Get all occupied seat numbers (active members only)
+                // 3. Get all occupied seat numbers (active members only, current user)
                 const { data: members, error: membersError } = await supabase
                     .from('members')
                     .select('seat_no')
                     .eq('status', 'active')
+                    .eq('user_id', user.id)
                     .not('seat_no', 'is', null);
 
                 if (membersError) return { success: false, message: membersError.message };
 
-                // 3. Find first available seat number
+                // 4. Find first available seat number
                 const occupiedSeats = members
                     .map(m => parseInt(m.seat_no))
                     .filter(n => !isNaN(n))
@@ -271,7 +336,7 @@ export const api = {
                     }
                 }
 
-                // 4. Check if next seat exceeds total seats
+                // 5. Check if next seat exceeds total seats
                 if (nextSeat > totalSeats) {
                     return { 
                         success: false, 
@@ -286,7 +351,11 @@ export const api = {
         },
         getSeatStats: async () => {
             try {
-                // 1. Get total seats from settings
+                // 1. Get current user for proper isolation
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, message: 'Not authenticated' };
+
+                // 2. Get total seats from settings
                 const { data: settingData } = await supabase
                     .from('settings')
                     .select('value')
@@ -295,11 +364,12 @@ export const api = {
 
                 const totalSeats = settingData?.value ? parseInt(settingData.value) : 50;
 
-                // 2. Count occupied seats (active members with seat numbers)
+                // 3. Count occupied seats (active members with seat numbers, current user)
                 const { count: occupiedSeats } = await supabase
                     .from('members')
                     .select('*', { count: 'exact', head: true })
                     .eq('status', 'active')
+                    .eq('user_id', user.id)
                     .not('seat_no', 'is', null)
                     .neq('seat_no', '');
 
@@ -322,7 +392,22 @@ export const api = {
         },
         validateSeatNumber: async ({ seatNo, memberId = null }) => {
             try {
-                const seatNumber = parseInt(seatNo);
+                // Clean and validate input
+                const cleanSeatNo = seatNo ? seatNo.toString().trim() : '';
+                
+                if (!cleanSeatNo || cleanSeatNo === '') {
+                    return { success: true, available: true, message: null };
+                }
+                
+                const seatNumber = parseInt(cleanSeatNo);
+                
+                if (isNaN(seatNumber)) {
+                    return { 
+                        success: true, 
+                        available: false,
+                        message: 'Seat number must be a valid number'
+                    };
+                }
                 
                 // 1. Get total seats from settings
                 const { data: settingData } = await supabase
@@ -342,11 +427,19 @@ export const api = {
                     };
                 }
 
-                // 3. Check if seat is already taken
+                // 3. Get current user for proper isolation
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    return { success: false, message: 'Not authenticated' };
+                }
+
+                // 4. Check if seat is already taken by an active member (with user isolation)
                 let query = supabase
                     .from('members')
-                    .select('id')
-                    .eq('seat_no', seatNo);
+                    .select('id, status, seat_no, user_id')
+                    .eq('seat_no', cleanSeatNo)
+                    .eq('status', 'active')
+                    .eq('user_id', user.id); // Ensure we only check current user's members
 
                 // Exclude current member when editing
                 if (memberId) {
@@ -355,20 +448,30 @@ export const api = {
 
                 const { data, error } = await query.maybeSingle();
 
-                if (error) return { success: false, message: error.message };
+                if (error) {
+                    console.error('Seat validation error:', error);
+                    return { success: false, message: error.message };
+                }
+                
+                console.log('Seat validation result for seat', cleanSeatNo, ':', { found: !!data, data });
                 
                 return { 
                     success: true, 
                     available: !data,
-                    message: data ? `Seat number ${seatNo} is already taken` : null
+                    message: data ? `Seat number ${cleanSeatNo} is already assigned to an active member` : null
                 };
             } catch (err) {
+                console.error('Seat validation exception:', err);
                 return { success: false, message: err.message };
             }
         },
         renew: async (renewalData) => {
             try {
                 const { memberId, planId, paymentDetails } = renewalData;
+
+                // Get current user for proper isolation
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, message: 'Not authenticated' };
 
                 // 1. Get plan details
                 const { data: plan, error: planError } = await supabase
@@ -398,23 +501,26 @@ export const api = {
                     .eq('id', memberId);
 
                 if (updateError) {
+                    console.error('Member update error:', updateError);
                     return { success: false, message: updateError.message };
                 }
 
-                // 4. Record payment
+                // 4. Record payment with correct column names matching actual schema
                 const { error: paymentError } = await supabase
                     .from('payments')
                     .insert({
                         member_id: memberId,
                         amount: plan.price,
-                        payment_method: paymentDetails.mode,
+                        payment_method: paymentDetails.mode || 'cash',
                         type: 'membership',
-                        notes: paymentDetails.note,
-                        transaction_id: `TXN-${Date.now()}`
+                        notes: paymentDetails.note || 'Membership renewal',
+                        transaction_id: `TXN-${Date.now()}`,
+                        user_id: user.id // Add user_id for RLS policy
                     });
 
                 if (paymentError) {
-                    return { success: false, message: paymentError.message };
+                    console.error('Payment insert error:', paymentError);
+                    return { success: false, message: `Membership updated but payment recording failed: ${paymentError.message}` };
                 }
 
                 return { success: true, message: 'Membership renewed successfully' };
@@ -512,6 +618,83 @@ export const api = {
                 return { success: true, data: flattened };
             }
             return handleResponse(data, error);
+        },
+        add: async ({ memberId, checkIn, checkOut, source = 'manual' } = {}) => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, message: 'Not authenticated' };
+
+                const dbData = {
+                    member_id: memberId,
+                    check_in: checkIn || new Date().toISOString(),
+                    check_out: checkOut || null,
+                    source,
+                    user_id: user.id
+                };
+
+                const { data, error } = await supabase
+                    .from('attendance')
+                    .insert([dbData])
+                    .select()
+                    .single();
+
+                return handleResponse(data, error);
+            } catch (err) {
+                return { success: false, message: err.message };
+            }
+        },
+        checkin: async ({ memberId, source = 'manual' } = {}) => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, message: 'Not authenticated' };
+
+                const dbData = {
+                    member_id: memberId,
+                    check_in: new Date().toISOString(),
+                    source,
+                    user_id: user.id
+                };
+
+                const { data, error } = await supabase
+                    .from('attendance')
+                    .insert([dbData])
+                    .select()
+                    .single();
+
+                return handleResponse(data, error);
+            } catch (err) {
+                return { success: false, message: err.message };
+            }
+        },
+        checkout: async ({ memberId, autoCheckOut = false } = {}) => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return { success: false, message: 'Not authenticated' };
+
+                // Find the latest active attendance record for this member (no check_out)
+                const { data: activeRecord, error: fetchError } = await supabase
+                    .from('attendance')
+                    .select('*')
+                    .eq('member_id', memberId)
+                    .is('check_out', null)
+                    .order('check_in', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (fetchError) return { success: false, message: fetchError.message };
+                if (!activeRecord) return { success: false, message: 'No active attendance found to check out' };
+
+                const { data, error } = await supabase
+                    .from('attendance')
+                    .update({ check_out: new Date().toISOString() })
+                    .eq('id', activeRecord.id)
+                    .select()
+                    .single();
+
+                return handleResponse(data, error);
+            } catch (err) {
+                return { success: false, message: err.message };
+            }
         },
         mark: async ({ memberId, status }) => {
             // Get current user

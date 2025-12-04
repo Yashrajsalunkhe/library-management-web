@@ -17,9 +17,12 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
         persistSession: true,
         detectSessionInUrl: false
     },
+    db: {
+        schema: 'public'
+    },
     global: {
         headers: {
-            'x-application-name': 'library-management-system',
+            'x-application-name': 'library-management-system'
         },
     }
 })

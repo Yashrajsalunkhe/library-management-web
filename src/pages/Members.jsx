@@ -79,10 +79,28 @@ const Members = ({ initialAction = null }) => {
         const member = { ...memberData, id: result.data.id };
         api.notification.sendWelcome(member);
       } else {
-        error(result.message || 'Failed to add member');
+        // Handle specific error messages
+        let errorMessage = result.message || 'Failed to add member';
+        
+        // Check for duplicate seat error
+        if (errorMessage.includes('idx_members_unique_active_seat') || 
+            errorMessage.includes('duplicate key value')) {
+          errorMessage = `Seat number ${memberData.seatNo} is already assigned to an active member. Please choose a different seat.`;
+        }
+        
+        error(errorMessage);
       }
     } catch (err) {
-      error('Failed to add member');
+      console.error('Error adding member:', err);
+      let errorMessage = 'Failed to add member';
+      
+      // Check for duplicate seat error in exception
+      if (err.message && (err.message.includes('idx_members_unique_active_seat') || 
+          err.message.includes('duplicate key value'))) {
+        errorMessage = `Seat number ${memberData.seatNo} is already assigned to an active member. Please choose a different seat.`;
+      }
+      
+      error(errorMessage);
     }
   };
 
@@ -98,11 +116,28 @@ const Members = ({ initialAction = null }) => {
         setSelectedMember(null);
         loadMembers();
       } else {
-        error(result.message || 'Failed to update member');
+        // Handle specific error messages
+        let errorMessage = result.message || 'Failed to update member';
+        
+        // Check for duplicate seat error
+        if (errorMessage.includes('idx_members_unique_active_seat') || 
+            errorMessage.includes('duplicate key value')) {
+          errorMessage = `Seat number ${memberData.seatNo} is already assigned to an active member. Please choose a different seat.`;
+        }
+        
+        error(errorMessage);
       }
     } catch (err) {
       console.error('Error updating member:', err);
-      error('Failed to update member');
+      let errorMessage = 'Failed to update member';
+      
+      // Check for duplicate seat error in exception
+      if (err.message && (err.message.includes('idx_members_unique_active_seat') || 
+          err.message.includes('duplicate key value'))) {
+        errorMessage = `Seat number ${memberData.seatNo} is already assigned to an active member. Please choose a different seat.`;
+      }
+      
+      error(errorMessage);
     } finally {
       setIsProcessing(false);
     }

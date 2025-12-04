@@ -10,6 +10,7 @@ const Payments = () => {
   const [loading, setLoading] = useState(true);
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState(null);
+  const [librarySettings, setLibrarySettings] = useState({});
   const [filters, setFilters] = useState({
     memberId: '',
     dateFrom: '',
@@ -40,6 +41,7 @@ const Payments = () => {
     loadPayments();
     loadMembers();
     loadMembershipPlans();
+    loadLibrarySettings();
   }, []);
 
   // Load payments when filters change
@@ -82,6 +84,17 @@ const Payments = () => {
       }
     } catch (error) {
       console.error('Failed to load membership plans:', error);
+    }
+  };
+
+  const loadLibrarySettings = async () => {
+    try {
+      const result = await api.settings.getSettings();
+      if (result.success) {
+        setLibrarySettings(result.settings || {});
+      }
+    } catch (error) {
+      console.error('Failed to load library settings:', error);
     }
   };
 
@@ -200,6 +213,321 @@ const Payments = () => {
     return payments
       .filter(payment => payment.paid_at.startsWith(today))
       .reduce((total, payment) => total + payment.amount, 0);
+  };
+
+  const generateReceiptHTML = (payment) => {
+    const member = members.find(m => m.id === payment.member_id);
+    const plan = membershipPlans.find(p => p.id === payment.plan_id);
+    
+    // Extract library details from settings
+    const libraryName = librarySettings.library_name || librarySettings.general_libraryName || 'Library Management System';
+    const libraryAddress = librarySettings.library_address || librarySettings.general_address || '';
+    const libraryPhone = librarySettings.library_phone || librarySettings.general_phone || '';
+    const libraryEmail = librarySettings.library_email || librarySettings.general_email || '';
+    const ownerName = librarySettings.library_owner_name || librarySettings.general_ownerName || '';
+    
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Payment Receipt - ${payment.receipt_number || payment.id}</title>
+  <style>
+    @media print {
+      @page { 
+        margin: 0.5cm;
+        size: A4 portrait;
+      }
+      body { 
+        margin: 0;
+        padding: 0.3cm;
+      }
+      .receipt-container {
+        page-break-inside: avoid;
+      }
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 10px;
+      color: #333;
+    }
+    .receipt-container {
+      border: 2px solid #2563eb;
+      border-radius: 8px;
+      padding: 15px;
+      background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 10px;
+    }
+    .header h1 {
+      margin: 0 0 5px 0;
+      color: #2563eb;
+      font-size: 22px;
+    }
+    .header p {
+      margin: 3px 0;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .header .library-details {
+      margin-top: 5px;
+      font-size: 11px;
+      color: #475569;
+      line-height: 1.4;
+    }
+    .receipt-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .info-section {
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+    .info-section h3 {
+      margin: 0 0 8px 0;
+      color: #475569;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 12px;
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .info-label {
+      color: #64748b;
+      font-weight: 500;
+    }
+    .info-value {
+      color: #1e293b;
+      font-weight: 600;
+    }
+    .payment-details {
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border: 2px dashed #cbd5e1;
+    }
+    .amount-section {
+      text-align: center;
+      padding: 15px;
+      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+      color: white;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .amount-section h2 {
+      margin: 0 0 5px 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .amount {
+      font-size: 32px;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .payment-mode {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 2px solid #e2e8f0;
+      color: #64748b;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .footer p {
+      margin: 3px 0;
+    }
+    .signature-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 20px;
+      padding-top: 15px;
+    }
+    .signature-line {
+      border-top: 2px solid #cbd5e1;
+      padding-top: 8px;
+      text-align: center;
+      color: #64748b;
+      font-size: 11px;
+    }
+    .note-section {
+      background: #fef3c7;
+      padding: 10px;
+      border-radius: 6px;
+      border-left: 4px solid #f59e0b;
+      margin: 12px 0;
+      font-size: 11px;
+    }
+    .note-section strong {
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-container">
+    <div class="header">
+      <h1>📚 ${libraryName}</h1>
+      <p>Payment Receipt</p>
+      <div class="library-details">
+        ${libraryAddress ? `<div>${libraryAddress}</div>` : ''}
+        ${libraryPhone || libraryEmail ? `<div>
+          ${libraryPhone ? `📞 ${libraryPhone}` : ''} 
+          ${libraryPhone && libraryEmail ? ' | ' : ''}
+          ${libraryEmail ? `📧 ${libraryEmail}` : ''}
+        </div>` : ''}
+        ${ownerName ? `<div><strong>Proprietor:</strong> ${ownerName}</div>` : ''}
+      </div>
+    </div>
+
+    <div class="receipt-info">
+      <div class="info-section">
+        <h3>Receipt Details</h3>
+        <div class="info-row">
+          <span class="info-label">Receipt No:</span>
+          <span class="info-value">${payment.receipt_number || payment.id}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date:</span>
+          <span class="info-value">${formatDate(payment.paid_at || payment.payment_date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Transaction ID:</span>
+          <span class="info-value">${payment.transaction_id || 'N/A'}</span>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <h3>Member Details</h3>
+        <div class="info-row">
+          <span class="info-label">Name:</span>
+          <span class="info-value">${member?.name || payment.member_name || 'N/A'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Member ID:</span>
+          <span class="info-value">${payment.member_id}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Contact:</span>
+          <span class="info-value">${member?.phone || 'N/A'}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="payment-details">
+      <div class="info-row">
+        <span class="info-label">Membership Plan:</span>
+        <span class="info-value">${plan?.name || 'N/A'}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Duration:</span>
+        <span class="info-value">${plan?.duration_days ? plan.duration_days + ' days' : 'N/A'}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Payment Type:</span>
+        <span class="info-value">${payment.type || 'Membership'}</span>
+      </div>
+    </div>
+
+    <div class="amount-section">
+      <h2>Total Amount Paid</h2>
+      <div class="amount">${formatCurrency(payment.amount)}</div>
+      <div class="payment-mode">Payment Mode: ${payment.payment_method || payment.mode || 'Cash'}</div>
+    </div>
+
+    ${payment.note ? `
+    <div class="note-section">
+      <strong>Note:</strong> ${payment.note}
+    </div>
+    ` : ''}
+
+    <div class="signature-section">
+      <div class="signature-line">
+        Received By
+      </div>
+      <div class="signature-line">
+        Member Signature
+      </div>
+    </div>
+
+    <div class="footer">
+      <p><strong>Thank you for your payment!</strong></p>
+      <p>This is a computer-generated receipt and does not require a signature.</p>
+      <p>For any queries, please contact the library administration.</p>
+      <p style="margin-top: 8px;">Generated on: ${new Date().toLocaleString('en-IN')}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const handlePrintReceipt = (payment) => {
+    const receiptHTML = generateReceiptHTML(payment);
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    printWindow.document.write(receiptHTML);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  };
+
+  const handleDownloadReceipt = (payment) => {
+    const receiptHTML = generateReceiptHTML(payment);
+    
+    // Create a hidden iframe to handle PDF generation
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    
+    const iframeDoc = iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(receiptHTML);
+    iframeDoc.close();
+    
+    // Wait for content to load then trigger print dialog with save as PDF
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      
+      // Clean up after print dialog is closed
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+      
+      showNotification('Use "Save as PDF" or "Print to PDF" in the print dialog to save the receipt', 'info');
+    }, 500);
   };
 
   return (
@@ -436,15 +764,15 @@ const Payments = () => {
                       <div className="flex gap-2">
                         <button
                           className="button button-secondary button-sm"
-                          onClick={() => showNotification('Receipt printing not available in web demo', 'info')}
-                          title="Reprint Receipt"
+                          onClick={() => handlePrintReceipt(payment)}
+                          title="Print Receipt"
                         >
                           🖨️
                         </button>
 
                         <button
                           className="button button-secondary button-sm"
-                          onClick={() => showNotification('Receipt download not available in web demo', 'info')}
+                          onClick={() => handleDownloadReceipt(payment)}
                           title="Download Receipt"
                         >
                           ⬇️

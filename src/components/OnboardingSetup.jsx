@@ -8,62 +8,64 @@ const OnboardingSetup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { addNotification } = useNotification();
   const { user, markSetupCompleted } = useAuth();
+  
+  // Payment Plans state
+  const [customPlans, setCustomPlans] = useState([]);
+  const [newPlan, setNewPlan] = useState({
+    name: '',
+    duration: '1',
+    amount: ''
+  });
 
   const [formData, setFormData] = useState({
-    // Study Room Info
-    studyRoomName: '',
-    location: '',
+    // Study Room Info (from Settings - General)
+    libraryName: '',
+    totalSeats: '',
     address: '',
     phone: '',
     email: '',
     website: '',
-    capacity: '',
-    description: '',
     
-    // Operating Hours
-    openingHours: {
-      monday: { open: '09:00', close: '18:00', closed: false },
-      tuesday: { open: '09:00', close: '18:00', closed: false },
-      wednesday: { open: '09:00', close: '18:00', closed: false },
-      thursday: { open: '09:00', close: '18:00', closed: false },
-      friday: { open: '09:00', close: '18:00', closed: false },
-      saturday: { open: '09:00', close: '18:00', closed: false },
-      sunday: { open: '09:00', close: '18:00', closed: true }
+    // Operating Hours (from Settings - General)
+    operatingHours: {
+      dayShift: {
+        openTime: '08:00',
+        closeTime: '18:00'
+      },
+      nightShift: {
+        openTime: '18:00',
+        closeTime: '06:00'
+      },
+      enableNightShift: false
     },
     
-    // Member Settings
-    maxMembers: '50',
-    membershipDuration: '12',
-    idNumber: '',
-    securityDeposit: '',
-    allowGuestAccess: false,
-    requireApproval: true,
+    // Member Settings (from Settings - Membership)
+    depositAmount: '200',
+    
+    // Attendance Settings (from Settings - Attendance)
     autoMarkAbsent: true,
     absentAfterHours: '2',
+    autoCheckOutHours: '12',
     
-    // Payment & Notifications
-    membershipFee: '',
-    lateFee: '',
-    depositAmount: '',
+    // Payment Settings (from Settings - Payment)
     currency: 'INR',
-    paymentReminderDays: '7',
-    autoGenerateReceipts: true,
     acceptCash: true,
     acceptOnline: false,
-    emailNotifications: true,
-    smsNotifications: false,
+    
+    // Notification Settings (from Settings - Notifications)
+    enableEmailNotifications: false,
+    enableSMSNotifications: false,
     membershipExpiryReminder: true,
     reminderDaysBefore: '7',
     birthdayWishes: true,
     
-    // Security & Backup
-    biometricEnabled: false,
+    // Security & Backup (from Settings - Security & Backup)
     sessionTimeout: '60',
+    enableBiometric: false,
     twoFactorAuth: false,
     autoBackup: true,
     backupFrequency: 'daily',
-    dataRetentionDays: '365',
-    backupLocation: 'local'
+    keepBackupsFor: '30'
   });
 
   const steps = [
@@ -76,19 +78,19 @@ const OnboardingSetup = () => {
     {
       id: 2,
       title: 'Operating Hours',
-      description: 'Set your daily operating schedule',
+      description: 'Set your operating schedule',
       icon: '⏰'
     },
     {
       id: 3,
-      title: 'Member Settings',
-      description: 'Configure membership rules and policies',
+      title: 'Membership & Attendance',
+      description: 'Configure membership and attendance settings',
       icon: '👥'
     },
     {
       id: 4,
       title: 'Payment & Notifications',
-      description: 'Set fees and communication preferences',
+      description: 'Set payment methods and communication preferences',
       icon: '💳'
     },
     {
@@ -123,18 +125,48 @@ const OnboardingSetup = () => {
   const validateStep = (step) => {
     switch (step) {
       case 1:
-        return formData.studyRoomName && formData.location && formData.capacity;
+        return formData.libraryName && formData.totalSeats && formData.address;
       case 2:
         return true;
       case 3:
-        return formData.maxMembers && formData.membershipDuration;
+        return formData.depositAmount;
       case 4:
-        return formData.membershipFee;
+        return true;
       case 5:
         return true;
       default:
         return true;
     }
+  };
+  
+  const addPlan = () => {
+    // Validate form
+    if (!newPlan.name || !newPlan.duration || !newPlan.amount) {
+      addNotification('Please fill in all plan details', 'error');
+      return;
+    }
+
+    // Duration is assumed to be in months, convert to days
+    const durationDays = parseInt(newPlan.duration) * 30;
+
+    const planData = {
+      id: Date.now(), // Temporary ID for UI
+      name: newPlan.name,
+      duration_days: durationDays,
+      price: parseFloat(newPlan.amount),
+      description: `${newPlan.duration} month plan`
+    };
+
+    setCustomPlans([...customPlans, planData]);
+    addNotification('Plan added successfully', 'success');
+    
+    // Reset form
+    setNewPlan({ name: '', duration: '1', amount: '' });
+  };
+
+  const removePlan = (planId) => {
+    setCustomPlans(customPlans.filter(plan => plan.id !== planId));
+    addNotification('Plan removed', 'success');
   };
 
   const nextStep = () => {
@@ -157,28 +189,74 @@ const OnboardingSetup = () => {
 
     setIsLoading(true);
     try {
-      const settingsData = {
-        studyRoomName: formData.studyRoomName,
-        location: formData.location,
-        capacity: parseInt(formData.capacity),
-        description: formData.description,
-        maxMembers: parseInt(formData.maxMembers),
-        membershipDuration: parseInt(formData.membershipDuration),
-        membershipFee: parseFloat(formData.membershipFee),
-        lateFee: parseFloat(formData.lateFee) || 0,
-        depositAmount: parseFloat(formData.depositAmount) || 0,
-        allowGuestAccess: formData.allowGuestAccess,
-        requireApproval: formData.requireApproval,
-        emailNotifications: formData.emailNotifications,
-        smsNotifications: formData.smsNotifications,
-        biometricEnabled: formData.biometricEnabled,
-        autoBackup: formData.autoBackup,
-        backupFrequency: formData.backupFrequency,
-        dataRetentionDays: parseInt(formData.dataRetentionDays),
-        openingHours: formData.openingHours
-      };
+      // Save settings using the correct structure that matches the Settings page
+      // Save General Settings
+      await api.settings.updateSettings({
+        total_seats: parseInt(formData.totalSeats),
+        library_name: formData.libraryName,
+        library_address: formData.address,
+        library_phone: formData.phone || '',
+        library_email: formData.email || '',
+        library_website: formData.website || '',
+        operating_hours: JSON.stringify(formData.operatingHours)
+      });
 
-      await api.saveSettings(settingsData);
+      // Save Membership Settings
+      await api.settings.updateSettings({
+        deposit_amount: parseFloat(formData.depositAmount)
+      });
+
+      // Save Attendance Settings
+      await api.settings.updateSettings({
+        auto_mark_absent: formData.autoMarkAbsent,
+        absent_after_hours: parseInt(formData.absentAfterHours),
+        auto_checkout_hours: parseInt(formData.autoCheckOutHours)
+      });
+
+      // Save Payment Settings
+      await api.settings.updateSettings({
+        currency: formData.currency,
+        accept_cash: formData.acceptCash,
+        accept_online: formData.acceptOnline
+      });
+
+      // Save Notification Settings
+      await api.settings.updateSettings({
+        enable_email_notifications: formData.enableEmailNotifications,
+        enable_sms_notifications: formData.enableSMSNotifications,
+        membership_expiry_reminder: formData.membershipExpiryReminder,
+        reminder_days_before: parseInt(formData.reminderDaysBefore),
+        birthday_wishes: formData.birthdayWishes
+      });
+
+      // Save Security Settings
+      await api.settings.updateSettings({
+        session_timeout: parseInt(formData.sessionTimeout),
+        enable_biometric: formData.enableBiometric,
+        two_factor_auth: formData.twoFactorAuth
+      });
+
+      // Save Backup Settings
+      await api.settings.updateSettings({
+        auto_backup: formData.autoBackup,
+        backup_frequency: formData.backupFrequency,
+        keep_backups_for: parseInt(formData.keepBackupsFor)
+      });
+      
+      // Save payment plans
+      for (const plan of customPlans) {
+        try {
+          await api.plan.add({
+            name: plan.name,
+            duration_days: plan.duration_days,
+            price: plan.price,
+            description: plan.description
+          });
+        } catch (err) {
+          console.error('Failed to save plan:', err);
+        }
+      }
+      
       await markSetupCompleted();
       addNotification('Setup completed successfully!', 'success');
     } catch (error) {
@@ -199,8 +277,8 @@ const OnboardingSetup = () => {
                 <label>Study Room Name</label>
                 <input
                   type="text"
-                  value={formData.studyRoomName}
-                  onChange={(e) => handleInputChange('studyRoomName', e.target.value)}
+                  value={formData.libraryName}
+                  onChange={(e) => handleInputChange('libraryName', e.target.value)}
                   placeholder="Enter your study room name"
                   className="minimal-input"
                   required
@@ -208,12 +286,12 @@ const OnboardingSetup = () => {
               </div>
               
               <div className="input-group">
-                <label>Capacity (Total Seats)</label>
+                <label>Total Seats</label>
                 <input
                   type="number"
-                  value={formData.capacity}
-                  onChange={(e) => handleInputChange('capacity', e.target.value)}
-                  placeholder="Maximum seats"
+                  value={formData.totalSeats}
+                  onChange={(e) => handleInputChange('totalSeats', e.target.value)}
+                  placeholder="Total number of seats"
                   className="minimal-input"
                   min="1"
                   required
@@ -228,11 +306,12 @@ const OnboardingSetup = () => {
                   placeholder="Full business address..."
                   className="minimal-textarea"
                   rows="2"
+                  required
                 />
               </div>
               
               <div className="input-group">
-                <label>Phone Number</label>
+                <label>Phone Number <span className="optional">optional</span></label>
                 <input
                   type="tel"
                   value={formData.phone}
@@ -243,7 +322,7 @@ const OnboardingSetup = () => {
               </div>
               
               <div className="input-group">
-                <label>Email Address</label>
+                <label>Email Address <span className="optional">optional</span></label>
                 <input
                   type="email"
                   value={formData.email}
@@ -263,17 +342,6 @@ const OnboardingSetup = () => {
                   className="minimal-input"
                 />
               </div>
-              
-              <div className="input-group full-width">
-                <label>Description <span className="optional">optional</span></label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Brief description of your study room, amenities, facilities..."
-                  className="minimal-textarea"
-                  rows="3"
-                />
-              </div>
             </div>
           </div>
         );
@@ -281,50 +349,72 @@ const OnboardingSetup = () => {
       case 2:
         return (
           <div className="minimal-form">
-            <div className="schedule-grid">
-              {Object.entries(formData.openingHours).map(([day, hours]) => (
-                <div key={day} className="day-card">
-                  <div className="day-header">
-                    <span className="day-name">{day}</span>
-                    <div className="day-toggle">
-                      <input
-                        type="checkbox"
-                        id={`${day}-toggle`}
-                        className="toggle-input"
-                        checked={!hours.closed}
-                        onChange={(e) => handleInputChange(`openingHours.${day}.closed`, !e.target.checked)}
-                      />
-                      <label htmlFor={`${day}-toggle`} className="toggle-label">
-                        {hours.closed ? 'Closed' : 'Open'}
-                      </label>
-                    </div>
+            <div className="section-group">
+              <h3>Day Shift Operating Hours</h3>
+              <div className="form-grid">
+                <div className="input-group">
+                  <label>Opening Time</label>
+                  <input
+                    type="time"
+                    value={formData.operatingHours.dayShift.openTime}
+                    onChange={(e) => handleInputChange('operatingHours.dayShift.openTime', e.target.value)}
+                    className="minimal-input"
+                  />
+                </div>
+                
+                <div className="input-group">
+                  <label>Closing Time</label>
+                  <input
+                    type="time"
+                    value={formData.operatingHours.dayShift.closeTime}
+                    onChange={(e) => handleInputChange('operatingHours.dayShift.closeTime', e.target.value)}
+                    className="minimal-input"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="section-group">
+              <div className="option-card">
+                <div className="option-content">
+                  <h3>Enable Night Shift</h3>
+                  <p>Operate during night hours for extended study time</p>
+                </div>
+                <div className="option-control">
+                  <input
+                    type="checkbox"
+                    id="nightShift"
+                    className="toggle-input"
+                    checked={formData.operatingHours.enableNightShift}
+                    onChange={(e) => handleInputChange('operatingHours.enableNightShift', e.target.checked)}
+                  />
+                  <label htmlFor="nightShift" className="toggle-label minimal"></label>
+                </div>
+              </div>
+              
+              {formData.operatingHours.enableNightShift && (
+                <div className="form-grid" style={{marginTop: '1rem'}}>
+                  <div className="input-group">
+                    <label>Night Shift Opening Time</label>
+                    <input
+                      type="time"
+                      value={formData.operatingHours.nightShift.openTime}
+                      onChange={(e) => handleInputChange('operatingHours.nightShift.openTime', e.target.value)}
+                      className="minimal-input"
+                    />
                   </div>
                   
-                  {!hours.closed && (
-                    <div className="time-inputs">
-                      <div className="time-group">
-                        <input
-                          type="time"
-                          value={hours.open}
-                          onChange={(e) => handleInputChange(`openingHours.${day}.open`, e.target.value)}
-                          className="time-input"
-                        />
-                        <span className="time-label">Open</span>
-                      </div>
-                      <div className="time-separator">—</div>
-                      <div className="time-group">
-                        <input
-                          type="time"
-                          value={hours.close}
-                          onChange={(e) => handleInputChange(`openingHours.${day}.close`, e.target.value)}
-                          className="time-input"
-                        />
-                        <span className="time-label">Close</span>
-                      </div>
-                    </div>
-                  )}
+                  <div className="input-group">
+                    <label>Night Shift Closing Time</label>
+                    <input
+                      type="time"
+                      value={formData.operatingHours.nightShift.closeTime}
+                      onChange={(e) => handleInputChange('operatingHours.nightShift.closeTime', e.target.value)}
+                      className="minimal-input"
+                    />
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         );
@@ -333,100 +423,31 @@ const OnboardingSetup = () => {
         return (
           <div className="minimal-form">
             <div className="section-group">
-              <h3>Basic Settings</h3>
+              <h3>Membership Settings</h3>
               <div className="form-grid">
                 <div className="input-group">
-                  <label>Maximum Members</label>
-                  <input
-                    type="number"
-                    value={formData.maxMembers}
-                    onChange={(e) => handleInputChange('maxMembers', e.target.value)}
-                    placeholder="100"
-                    className="minimal-input"
-                    min="1"
-                    required
-                  />
-                </div>
-                
-                <div className="input-group">
-                  <label>Membership Duration (months)</label>
-                  <input
-                    type="number"
-                    value={formData.membershipDuration}
-                    onChange={(e) => handleInputChange('membershipDuration', e.target.value)}
-                    placeholder="12"
-                    className="minimal-input"
-                    min="1"
-                    required
-                  />
-                </div>
-                
-                <div className="input-group">
-                  <label>ID Number Prefix <span className="optional">optional</span></label>
-                  <input
-                    type="text"
-                    value={formData.idNumber}
-                    onChange={(e) => handleInputChange('idNumber', e.target.value)}
-                    placeholder="LIB"
-                    className="minimal-input"
-                  />
-                </div>
-                
-                <div className="input-group">
-                  <label>Security Deposit <span className="optional">optional</span></label>
+                  <label>Deposit Amount (₹)</label>
                   <div className="currency-input">
                     <span className="currency-symbol">₹</span>
                     <input
                       type="number"
-                      step="0.01"
-                      value={formData.securityDeposit}
-                      onChange={(e) => handleInputChange('securityDeposit', e.target.value)}
-                      placeholder="500.00"
+                      step="50"
+                      value={formData.depositAmount}
+                      onChange={(e) => handleInputChange('depositAmount', e.target.value)}
+                      placeholder="200"
                       className="minimal-input currency"
                       min="0"
+                      required
                     />
                   </div>
+                  <p className="text-xs text-slate-500 mt-1">Security deposit required from each member</p>
                 </div>
               </div>
             </div>
             
             <div className="section-group">
-              <h3>Access & Attendance</h3>
+              <h3>Attendance Settings</h3>
               <div className="options-grid">
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>Guest Access</h3>
-                    <p>Allow non-members to access the library</p>
-                  </div>
-                  <div className="option-control">
-                    <input
-                      type="checkbox"
-                      id="guestAccess"
-                      className="toggle-input"
-                      checked={formData.allowGuestAccess}
-                      onChange={(e) => handleInputChange('allowGuestAccess', e.target.checked)}
-                    />
-                    <label htmlFor="guestAccess" className="toggle-label minimal"></label>
-                  </div>
-                </div>
-                
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>Admin Approval</h3>
-                    <p>Require approval for new member registrations</p>
-                  </div>
-                  <div className="option-control">
-                    <input
-                      type="checkbox"
-                      id="adminApproval"
-                      className="toggle-input"
-                      checked={formData.requireApproval}
-                      onChange={(e) => handleInputChange('requireApproval', e.target.checked)}
-                    />
-                    <label htmlFor="adminApproval" className="toggle-label minimal"></label>
-                  </div>
-                </div>
-                
                 <div className="option-card">
                   <div className="option-content">
                     <h3>Auto Mark Absent</h3>
@@ -461,6 +482,22 @@ const OnboardingSetup = () => {
                   </div>
                 </div>
               )}
+              
+              <div className="form-grid" style={{marginTop: '1rem'}}>
+                <div className="input-group">
+                  <label>Auto Check-out After (hours)</label>
+                  <input
+                    type="number"
+                    value={formData.autoCheckOutHours}
+                    onChange={(e) => handleInputChange('autoCheckOutHours', e.target.value)}
+                    placeholder="12"
+                    className="minimal-input"
+                    min="1"
+                    max="24"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Members will be automatically checked out after this many hours</p>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -469,14 +506,215 @@ const OnboardingSetup = () => {
         return (
           <div className="minimal-form">
             <div className="section-group">
-              <h3>Payment Structure</h3>
-              <div className="form-grid">
+              <div style={{ marginBottom: '1rem' }}>
+                <h3 style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '600', 
+                  marginBottom: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  💳 Payment Plans
+                </h3>
+                <p style={{ 
+                  fontSize: '0.875rem', 
+                  color: '#64748b',
+                  margin: 0 
+                }}>
+                  Create membership plans for your study room
+                </p>
+              </div>
+              
+              <div style={{
+                backgroundColor: '#ffffff',
+                padding: '1rem',
+                borderRadius: '0.5rem',
+                border: '1px solid #e2e8f0',
+                marginBottom: '1rem'
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1fr 1fr',
+                  gap: '0.75rem',
+                  alignItems: 'end',
+                  marginBottom: '0.5rem'
+                }}>
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      fontSize: '0.875rem', 
+                      fontWeight: '500',
+                      marginBottom: '0.5rem',
+                      color: '#1e293b'
+                    }}>Plan Name</label>
+                    <input
+                      type="text"
+                      value={newPlan.name}
+                      onChange={(e) => setNewPlan(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="e.g. Monthly Plan"
+                      className="minimal-input"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.875rem'
+                      }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      fontSize: '0.875rem', 
+                      fontWeight: '500',
+                      marginBottom: '0.5rem',
+                      color: '#1e293b'
+                    }}>Duration (months)</label>
+                    <input
+                      type="number"
+                      value={newPlan.duration}
+                      onChange={(e) => setNewPlan(prev => ({ ...prev, duration: e.target.value }))}
+                      className="minimal-input"
+                      min="1"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.875rem'
+                      }}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ 
+                      display: 'block', 
+                      fontSize: '0.875rem', 
+                      fontWeight: '500',
+                      marginBottom: '0.5rem',
+                      color: '#1e293b'
+                    }}>Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={newPlan.amount}
+                      onChange={(e) => setNewPlan(prev => ({ ...prev, amount: e.target.value }))}
+                      className="minimal-input"
+                      min="0"
+                      placeholder="0"
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.875rem'
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={addPlan}
+                  style={{
+                    width: '100%',
+                    padding: '0.625rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    marginTop: '0.5rem'
+                  }}
+                >
+                  Add Plan
+                </button>
+              </div>
+              
+              {customPlans.length > 0 ? (
+                <div style={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem',
+                  overflow: 'hidden',
+                  marginBottom: '1.5rem'
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#3b82f6', color: 'white' }}>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', letterSpacing: '0.05em' }}>PLAN NAME</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', letterSpacing: '0.05em' }}>DURATION</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', letterSpacing: '0.05em' }}>AMOUNT</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', letterSpacing: '0.05em' }}>ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customPlans.map(plan => (
+                        <tr key={plan.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem' }}>{plan.name}</td>
+                          <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem' }}>{plan.duration_days} Days</td>
+                          <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem' }}>₹{plan.price}</td>
+                          <td style={{ padding: '0.875rem 1rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => removePlan(plan.id)}
+                              style={{
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                padding: '0.375rem 0.875rem',
+                                borderRadius: '0.375rem',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem',
+                                fontWeight: '500'
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '2.5rem 1rem',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '0.5rem',
+                  color: '#94a3b8',
+                  fontSize: '0.875rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  <p style={{ margin: 0 }}>No payment plans added yet</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="section-group" style={{ marginBottom: '2rem' }}>
+              <h3 style={{ 
+                fontSize: '1rem', 
+                fontWeight: '600', 
+                marginBottom: '1rem',
+                color: '#1e293b'
+              }}>Payment Configuration</h3>
+              
+              <div className="form-grid" style={{ marginBottom: '1.5rem' }}>
                 <div className="input-group">
-                  <label>Currency</label>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '0.875rem', 
+                    fontWeight: '500',
+                    marginBottom: '0.5rem',
+                    color: '#1e293b'
+                  }}>Currency</label>
                   <select
                     value={formData.currency}
                     onChange={(e) => handleInputChange('currency', e.target.value)}
                     className="minimal-select"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.875rem'
+                    }}
                   >
                     <option value="INR">₹ Indian Rupee (INR)</option>
                     <option value="USD">$ US Dollar (USD)</option>
@@ -484,92 +722,31 @@ const OnboardingSetup = () => {
                     <option value="GBP">£ British Pound (GBP)</option>
                   </select>
                 </div>
-                
-                <div className="input-group">
-                  <label>Monthly Membership Fee</label>
-                  <div className="currency-input">
-                    <span className="currency-symbol">{formData.currency === 'INR' ? '₹' : formData.currency === 'USD' ? '$' : formData.currency === 'EUR' ? '€' : '£'}</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.membershipFee}
-                      onChange={(e) => handleInputChange('membershipFee', e.target.value)}
-                      placeholder="500.00"
-                      className="minimal-input currency"
-                      min="0"
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="input-group">
-                  <label>Late Payment Fee <span className="optional">optional</span></label>
-                  <div className="currency-input">
-                    <span className="currency-symbol">{formData.currency === 'INR' ? '₹' : formData.currency === 'USD' ? '$' : formData.currency === 'EUR' ? '€' : '£'}</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.lateFee}
-                      onChange={(e) => handleInputChange('lateFee', e.target.value)}
-                      placeholder="50.00"
-                      className="minimal-input currency"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                <div className="input-group">
-                  <label>Registration Deposit <span className="optional">optional</span></label>
-                  <div className="currency-input">
-                    <span className="currency-symbol">{formData.currency === 'INR' ? '₹' : formData.currency === 'USD' ? '$' : formData.currency === 'EUR' ? '€' : '£'}</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.depositAmount}
-                      onChange={(e) => handleInputChange('depositAmount', e.target.value)}
-                      placeholder="1000.00"
-                      className="minimal-input currency"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                
-                <div className="input-group">
-                  <label>Payment Reminder (days before due)</label>
-                  <input
-                    type="number"
-                    value={formData.paymentReminderDays}
-                    onChange={(e) => handleInputChange('paymentReminderDays', e.target.value)}
-                    placeholder="7"
-                    className="minimal-input"
-                    min="1"
-                    max="30"
-                  />
-                </div>
               </div>
               
-              <div className="options-grid">
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>Auto Generate Receipts</h3>
-                    <p>Automatically create payment receipts</p>
-                  </div>
-                  <div className="option-control">
-                    <input
-                      type="checkbox"
-                      id="autoGenerateReceipts"
-                      className="toggle-input"
-                      checked={formData.autoGenerateReceipts}
-                      onChange={(e) => handleInputChange('autoGenerateReceipts', e.target.checked)}
-                    />
-                    <label htmlFor="autoGenerateReceipts" className="toggle-label minimal"></label>
-                  </div>
-                </div>
-                
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>Accept Cash Payments</h3>
-                    <p>Allow cash payments at the library</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem'
+                }}>
+                  <div>
+                    <h4 style={{ 
+                      fontSize: '0.9375rem', 
+                      fontWeight: '600', 
+                      margin: 0,
+                      marginBottom: '0.25rem',
+                      color: '#1e293b'
+                    }}>Accept Cash Payments</h4>
+                    <p style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#64748b', 
+                      margin: 0 
+                    }}>Allow cash payments at the library</p>
                   </div>
                   <div className="option-control">
                     <input
@@ -583,10 +760,28 @@ const OnboardingSetup = () => {
                   </div>
                 </div>
                 
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>Accept Online Payments</h3>
-                    <p>Enable digital payment methods</p>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem'
+                }}>
+                  <div>
+                    <h4 style={{ 
+                      fontSize: '0.9375rem', 
+                      fontWeight: '600', 
+                      margin: 0,
+                      marginBottom: '0.25rem',
+                      color: '#1e293b'
+                    }}>Accept Online Payments</h4>
+                    <p style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#64748b', 
+                      margin: 0 
+                    }}>Enable digital payment methods</p>
                   </div>
                   <div className="option-control">
                     <input
@@ -603,46 +798,106 @@ const OnboardingSetup = () => {
             </div>
             
             <div className="section-group">
-              <h3>Communication & Notifications</h3>
-              <div className="options-grid">
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>Email Notifications</h3>
-                    <p>Payment reminders, updates & announcements</p>
+              <h3 style={{ 
+                fontSize: '1rem', 
+                fontWeight: '600', 
+                marginBottom: '1rem',
+                color: '#1e293b'
+              }}>Notification Preferences</h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem'
+                }}>
+                  <div>
+                    <h4 style={{ 
+                      fontSize: '0.9375rem', 
+                      fontWeight: '600', 
+                      margin: 0,
+                      marginBottom: '0.25rem',
+                      color: '#1e293b'
+                    }}>Email Notifications</h4>
+                    <p style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#64748b', 
+                      margin: 0 
+                    }}>Send notifications via email</p>
                   </div>
                   <div className="option-control">
                     <input
                       type="checkbox"
                       id="emailNotifications"
                       className="toggle-input"
-                      checked={formData.emailNotifications}
-                      onChange={(e) => handleInputChange('emailNotifications', e.target.checked)}
+                      checked={formData.enableEmailNotifications}
+                      onChange={(e) => handleInputChange('enableEmailNotifications', e.target.checked)}
                     />
                     <label htmlFor="emailNotifications" className="toggle-label minimal"></label>
                   </div>
                 </div>
                 
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>SMS Notifications</h3>
-                    <p>Urgent updates & payment alerts</p>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem'
+                }}>
+                  <div>
+                    <h4 style={{ 
+                      fontSize: '0.9375rem', 
+                      fontWeight: '600', 
+                      margin: 0,
+                      marginBottom: '0.25rem',
+                      color: '#1e293b'
+                    }}>SMS Notifications</h4>
+                    <p style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#64748b', 
+                      margin: 0 
+                    }}>Send notifications via SMS</p>
                   </div>
                   <div className="option-control">
                     <input
                       type="checkbox"
                       id="smsNotifications"
                       className="toggle-input"
-                      checked={formData.smsNotifications}
-                      onChange={(e) => handleInputChange('smsNotifications', e.target.checked)}
+                      checked={formData.enableSMSNotifications}
+                      onChange={(e) => handleInputChange('enableSMSNotifications', e.target.checked)}
                     />
                     <label htmlFor="smsNotifications" className="toggle-label minimal"></label>
                   </div>
                 </div>
                 
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>Membership Expiry Reminders</h3>
-                    <p>Alert members before membership expires</p>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem'
+                }}>
+                  <div>
+                    <h4 style={{ 
+                      fontSize: '0.9375rem', 
+                      fontWeight: '600', 
+                      margin: 0,
+                      marginBottom: '0.25rem',
+                      color: '#1e293b'
+                    }}>Membership Expiry Reminder</h4>
+                    <p style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#64748b', 
+                      margin: 0 
+                    }}>Send reminders before membership expires</p>
                   </div>
                   <div className="option-control">
                     <input
@@ -656,10 +911,28 @@ const OnboardingSetup = () => {
                   </div>
                 </div>
                 
-                <div className="option-card">
-                  <div className="option-content">
-                    <h3>Birthday Wishes</h3>
-                    <p>Send birthday greetings to members</p>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '1rem',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '0.5rem'
+                }}>
+                  <div>
+                    <h4 style={{ 
+                      fontSize: '0.9375rem', 
+                      fontWeight: '600', 
+                      margin: 0,
+                      marginBottom: '0.25rem',
+                      color: '#1e293b'
+                    }}>Birthday Wishes</h4>
+                    <p style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#64748b', 
+                      margin: 0 
+                    }}>Send birthday wishes to members</p>
                   </div>
                   <div className="option-control">
                     <input
@@ -675,19 +948,28 @@ const OnboardingSetup = () => {
               </div>
               
               {formData.membershipExpiryReminder && (
-                <div className="form-grid" style={{marginTop: '1rem'}}>
-                  <div className="input-group">
-                    <label>Remind (days before expiry)</label>
-                    <input
-                      type="number"
-                      value={formData.reminderDaysBefore}
-                      onChange={(e) => handleInputChange('reminderDaysBefore', e.target.value)}
-                      placeholder="7"
-                      className="minimal-input"
-                      min="1"
-                      max="90"
-                    />
-                  </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontSize: '0.875rem', 
+                    fontWeight: '500',
+                    marginBottom: '0.5rem',
+                    color: '#1e293b'
+                  }}>Reminder Days Before Expiry</label>
+                  <input
+                    type="number"
+                    value={formData.reminderDaysBefore}
+                    onChange={(e) => handleInputChange('reminderDaysBefore', e.target.value)}
+                    placeholder="7"
+                    className="minimal-input"
+                    min="1"
+                    max="30"
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.875rem'
+                    }}
+                  />
                 </div>
               )}
             </div>
@@ -710,8 +992,8 @@ const OnboardingSetup = () => {
                       type="checkbox"
                       id="biometricEnabled"
                       className="toggle-input"
-                      checked={formData.biometricEnabled}
-                      onChange={(e) => handleInputChange('biometricEnabled', e.target.checked)}
+                      checked={formData.enableBiometric}
+                      onChange={(e) => handleInputChange('enableBiometric', e.target.checked)}
                     />
                     <label htmlFor="biometricEnabled" className="toggle-label minimal"></label>
                   </div>
@@ -788,27 +1070,15 @@ const OnboardingSetup = () => {
                   </div>
                   
                   <div className="input-group">
-                    <label>Backup Location</label>
-                    <select
-                      value={formData.backupLocation}
-                      onChange={(e) => handleInputChange('backupLocation', e.target.value)}
-                      className="minimal-select"
-                    >
-                      <option value="local">Local Storage</option>
-                      <option value="cloud">Cloud Storage</option>
-                    </select>
-                  </div>
-                  
-                  <div className="input-group">
-                    <label>Data Retention (days)</label>
+                    <label>Keep Backups For (days)</label>
                     <input
                       type="number"
-                      value={formData.dataRetentionDays}
-                      onChange={(e) => handleInputChange('dataRetentionDays', e.target.value)}
-                      placeholder="365"
+                      value={formData.keepBackupsFor}
+                      onChange={(e) => handleInputChange('keepBackupsFor', e.target.value)}
+                      placeholder="30"
                       className="minimal-input"
-                      min="30"
-                      max="3650"
+                      min="7"
+                      max="365"
                     />
                   </div>
                 </div>
@@ -820,10 +1090,10 @@ const OnboardingSetup = () => {
                 <h2>Setup Complete!</h2>
                 <p>Your comprehensive library management system is configured and ready to launch. All essential features have been set up according to your preferences.</p>
                 <div className="completion-features">
-                  <span>✓ Library Information & Contact Details</span>
+                  <span>✓ Study Room Information & Contact Details</span>
                   <span>✓ Operating Hours & Schedule</span>
-                  <span>✓ Member Management & Registration</span>
-                  <span>✓ Payment Structure & Notifications</span>
+                  <span>✓ Membership & Attendance Settings</span>
+                  <span>✓ Payment Methods & Notifications</span>
                   <span>✓ Security & Data Protection</span>
                 </div>
               </div>

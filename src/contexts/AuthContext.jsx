@@ -18,9 +18,56 @@ export const AuthProvider = ({ children }) => {
   const [checkingSetup, setCheckingSetup] = useState(false);
 
   useEffect(() => {
-    // Clear stored authentication on app start to always show login page
-    localStorage.removeItem('library_user');
-    setLoading(false);
+    // Restore user session from localStorage and Supabase on app start
+    const restoreSession = async () => {
+      try {
+        // Check Supabase session first
+        const { data: { session } } = await api.auth.getSession();
+        
+        if (session?.user) {
+          // Get full profile details
+          const profileResult = await api.profiles.get(session.user.id);
+          
+          if (profileResult.success && profileResult.data) {
+            setUser(profileResult.data);
+            localStorage.setItem('library_user', JSON.stringify(profileResult.data));
+            await checkSetupStatus();
+          } else {
+            // Try localStorage as fallback
+            const storedUser = localStorage.getItem('library_user');
+            if (storedUser) {
+              setUser(JSON.parse(storedUser));
+              await checkSetupStatus();
+            }
+          }
+        } else {
+          // No Supabase session, check localStorage
+          const storedUser = localStorage.getItem('library_user');
+          if (storedUser) {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            await checkSetupStatus();
+          }
+        }
+      } catch (error) {
+        console.error('Error restoring session:', error);
+        // Try localStorage as final fallback
+        const storedUser = localStorage.getItem('library_user');
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+            await checkSetupStatus();
+          } catch (e) {
+            console.error('Error parsing stored user:', e);
+            localStorage.removeItem('library_user');
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
   }, []);
 
   const checkSetupStatus = async () => {
