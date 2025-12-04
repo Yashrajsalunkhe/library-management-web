@@ -136,6 +136,18 @@ const Settings = () => {
   const [backupLoading, setBackupLoading] = useState(false);
   const [envLoading, setEnvLoading] = useState(false);
   const [envSaving, setEnvSaving] = useState(false);
+  
+  // Track unsaved changes per tab
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState({
+    general: false,
+    membership: false,
+    attendance: false,
+    payment: false,
+    notifications: false,
+    security: false,
+    backup: false,
+    environment: false
+  });
 
   // Password change state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -486,6 +498,8 @@ const Settings = () => {
         const result = await api.settings.updateSettings(settingsToSave);
         if (result.success) {
           success('General settings saved successfully!');
+          // Clear unsaved changes flag
+          setHasUnsavedChanges(prev => ({ ...prev, general: false }));
         } else {
           error('Failed to save general settings: ' + result.message);
         }
@@ -520,6 +534,8 @@ const Settings = () => {
         const result = await api.settings.saveSettings({ membership: settings.membership });
         if (result.success) {
           success('Membership settings saved successfully!');
+          // Clear unsaved changes flag
+          setHasUnsavedChanges(prev => ({ ...prev, membership: false }));
         } else {
           error('Failed to save membership settings: ' + result.message);
         }
@@ -539,6 +555,8 @@ const Settings = () => {
         const result = await api.settings.saveSettings({ attendance: settings.attendance });
         if (result.success) {
           success('Attendance settings saved successfully!');
+          // Clear unsaved changes flag
+          setHasUnsavedChanges(prev => ({ ...prev, attendance: false }));
         } else {
           error('Failed to save attendance settings: ' + result.message);
         }
@@ -573,6 +591,8 @@ const Settings = () => {
         const result = await api.settings.saveSettings({ payment: settings.payment });
         if (result.success) {
           success('Payment settings saved successfully!');
+          // Clear unsaved changes flag
+          setHasUnsavedChanges(prev => ({ ...prev, payment: false }));
         } else {
           error('Failed to save payment settings: ' + result.message);
         }
@@ -592,6 +612,8 @@ const Settings = () => {
         const result = await api.settings.saveSettings({ notifications: settings.notifications });
         if (result.success) {
           success('Notification settings saved successfully!');
+          // Clear unsaved changes flag
+          setHasUnsavedChanges(prev => ({ ...prev, notifications: false }));
         } else {
           error('Failed to save notification settings: ' + result.message);
         }
@@ -611,6 +633,8 @@ const Settings = () => {
         const result = await api.settings.saveSettings({ security: settings.security });
         if (result.success) {
           success('Security settings saved successfully!');
+          // Clear unsaved changes flag
+          setHasUnsavedChanges(prev => ({ ...prev, security: false }));
         } else {
           error('Failed to save security settings: ' + result.message);
         }
@@ -630,6 +654,8 @@ const Settings = () => {
         const result = await api.settings.saveSettings({ backup: settings.backup });
         if (result.success) {
           success('Backup settings saved successfully!');
+          // Clear unsaved changes flag
+          setHasUnsavedChanges(prev => ({ ...prev, backup: false }));
         } else {
           error('Failed to save backup settings: ' + result.message);
         }
@@ -649,6 +675,8 @@ const Settings = () => {
         const result = await api.env.updateVariables(settings.environment);
         if (result.success) {
           success('Environment variables saved successfully! Please restart the application for changes to take effect.');
+          // Clear unsaved changes flag
+          setHasUnsavedChanges(prev => ({ ...prev, environment: false }));
         } else {
           error('Failed to save environment variables: ' + result.message);
         }
@@ -673,6 +701,30 @@ const Settings = () => {
         [key]: value
       }
     }));
+    
+    // Mark this category as having unsaved changes
+    setHasUnsavedChanges(prev => ({
+      ...prev,
+      [category]: true
+    }));
+  };
+
+  const handleTabChange = (newTab) => {
+    // Check if current tab has unsaved changes
+    if (hasUnsavedChanges[activeTab]) {
+      const confirmSwitch = window.confirm(
+        `You have unsaved changes in the ${activeTab} settings. If you switch tabs now, these changes will be lost. Do you want to continue?`
+      );
+      if (!confirmSwitch) {
+        return; // Don't switch tabs
+      }
+      // Clear unsaved changes for the current tab if user confirms
+      setHasUnsavedChanges(prev => ({
+        ...prev,
+        [activeTab]: false
+      }));
+    }
+    setActiveTab(newTab);
   };
 
   const resetToDefaults = () => {
@@ -908,6 +960,22 @@ const Settings = () => {
 
   const renderGeneralSettings = () => (
     <div className="space-y-8">
+      {hasUnsavedChanges.general && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700 font-medium">
+                You have unsaved changes. Click "Save General Settings" to save your changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section>
         <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
           📚 Study Room Information
@@ -1350,6 +1418,22 @@ const Settings = () => {
   const renderMembershipSettings = () => {
     return (
       <div className="space-y-8">
+        {hasUnsavedChanges.membership && (
+          <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-amber-700 font-medium">
+                  You have unsaved changes. Click "Save Membership Settings" to save your changes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <section>
           <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
             👤 Member Registration Settings
@@ -1519,6 +1603,22 @@ const Settings = () => {
 
   const renderAttendanceSettings = () => (
     <div className="space-y-8">
+      {hasUnsavedChanges.attendance && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700 font-medium">
+                You have unsaved changes. Click "Save Attendance Settings" to save your changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section>
         <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
           📅 Attendance Configuration
@@ -1765,6 +1865,22 @@ const Settings = () => {
 
   const renderPaymentSettings = () => (
     <div className="space-y-8">
+      {hasUnsavedChanges.payment && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700 font-medium">
+                You have unsaved changes. Click "Save Payment Settings" to save your changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section>
         <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
           💳 Payment Plans
@@ -1966,6 +2082,22 @@ const Settings = () => {
 
   const renderNotificationSettings = () => (
     <div className="space-y-8">
+      {hasUnsavedChanges.notifications && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700 font-medium">
+                You have unsaved changes. Click "Save Notification Settings" to save your changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section>
         <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
           🔔 Notification Preferences
@@ -2068,6 +2200,22 @@ const Settings = () => {
 
   const renderSecuritySettings = () => (
     <div className="space-y-8">
+      {hasUnsavedChanges.security && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700 font-medium">
+                You have unsaved changes. Click "Save Security Settings" to save your changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section>
         <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
           🔐 Security Configuration
@@ -2186,6 +2334,22 @@ const Settings = () => {
 
   const renderEnvironmentSettings = () => (
     <div className="space-y-8">
+      {hasUnsavedChanges.environment && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700 font-medium">
+                You have unsaved changes. Click "Save Environment Settings" to save your changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section>
         <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
           🎨 Environment & Appearance
@@ -2434,6 +2598,22 @@ const Settings = () => {
 
   const renderBackupSettings = () => (
     <div className="space-y-8">
+      {hasUnsavedChanges.backup && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700 font-medium">
+                You have unsaved changes. Click "Save Backup Settings" to save your changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <section>
         <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center gap-2">
           💾 Data Backup & Restore
@@ -3030,7 +3210,7 @@ const Settings = () => {
                 <button
                   key={tab.id}
                   className={`settings-tab ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                 >
                   <span className="tab-icon">{tab.icon}</span>
                   <span className="tab-label">{tab.label}</span>
