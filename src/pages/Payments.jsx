@@ -220,7 +220,7 @@ const Payments = () => {
     const plan = membershipPlans.find(p => p.id === payment.plan_id);
     
     // Extract library details from settings
-    const libraryName = librarySettings.library_name || librarySettings.general_libraryName || 'Library Management System';
+    const libraryName = librarySettings.library_name || librarySettings.general_libraryName || 'Libro';
     const libraryAddress = librarySettings.library_address || librarySettings.general_address || '';
     const libraryPhone = librarySettings.library_phone || librarySettings.general_phone || '';
     const libraryEmail = librarySettings.library_email || librarySettings.general_email || '';

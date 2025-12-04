@@ -1,6 +1,6 @@
 # Biometric Integration Guide
 
-This guide explains how to set up and use the real-time biometric integration in the Library Management System.
+This guide explains how to set up and use the real-time biometric integration in Libro.
 
 ## Overview
 

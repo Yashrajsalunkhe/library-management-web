@@ -916,7 +916,7 @@ export const api = {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `library_backup_${new Date().toISOString()}.json`;
+                a.download = `libro_backup_${new Date().toISOString()}.json`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);

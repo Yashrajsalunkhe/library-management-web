@@ -22,7 +22,7 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     },
     global: {
         headers: {
-            'x-application-name': 'library-management-system'
+            'x-application-name': 'libro'
         },
     }
 })

@@ -1,4 +1,4 @@
--- UNIFIED LIBRARY MANAGEMENT SCHEMA
+-- LIBRO - UNIFIED SCHEMA
 -- This script creates a database structure that matches the desktop app but works with Supabase
 
 -- Enable required extensions

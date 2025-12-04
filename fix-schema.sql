@@ -1,4 +1,4 @@
--- LIBRARY MANAGEMENT SYSTEM - SCHEMA FIX
+-- LIBRO - SCHEMA FIX
 -- This script safely updates the existing schema
 
 -- Enable UUID extension (safe to run multiple times)

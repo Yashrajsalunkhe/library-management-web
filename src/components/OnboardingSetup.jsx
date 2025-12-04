@@ -1088,7 +1088,7 @@ const OnboardingSetup = () => {
             <div className="completion-card">
               <div className="completion-content">
                 <h2>Setup Complete!</h2>
-                <p>Your comprehensive library management system is configured and ready to launch. All essential features have been set up according to your preferences.</p>
+                <p>Your Libro system is configured and ready to launch. All essential features have been set up according to your preferences.</p>
                 <div className="completion-features">
                   <span>✓ Study Room Information & Contact Details</span>
                   <span>✓ Operating Hours & Schedule</span>

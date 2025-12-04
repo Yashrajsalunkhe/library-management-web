@@ -24,7 +24,7 @@ const Layout = ({ children, currentPage, onPageChange }) => {
           <div className="logo-container">
             <div className="logo-icon">📚</div>
             {!sidebarCollapsed && (
-              <span className="logo-text">Library MS</span>
+              <span className="logo-text">Libro</span>
             )}
           </div>
           <button 
@@ -77,7 +77,7 @@ const Layout = ({ children, currentPage, onPageChange }) => {
         <header className="top-header">
           <div className="header-left">
             <h1 className="page-title">{currentPage}</h1>
-            <p className="page-subtitle">Manage your library efficiently</p>
+            <p className="page-subtitle">Manage your space efficiently</p>
           </div>
 
           <div className="header-right">

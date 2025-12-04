@@ -1,7 +1,7 @@
 {
-  "name": "library-management",
+  "name": "libro",
   "version": "1.0.0",
-  "description": "Study Room Library Management System",
+  "description": "Libro - Modern Library Management System",
   "type": "module",
   "scripts": {
     "dev": "vite",

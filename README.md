@@ -1,6 +1,6 @@
-# 📚 Library Management System
+# 📚 Libro
 
-A modern web application for managing library memberships, attendance tracking, payments, and daily operations.
+A modern management system for memberships, attendance tracking, payments, and daily operations.
 
 ## 🚀 Quick Start
 
@@ -12,8 +12,8 @@ A modern web application for managing library memberships, attendance tracking, 
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/Yashrajsalunkhe/library-management.git
-cd library-management
+git clone https://github.com/Yashrajsalunkhe/libro.git
+cd libro
 ```
 
 2. **Install dependencies**
@@ -92,7 +92,7 @@ Visit `http://localhost:5173`
 ## 📁 Project Structure
 
 ```
-library-management/
+libro/
 ├── src/
 │   ├── components/      # React components
 │   ├── contexts/        # State management
@@ -158,4 +158,4 @@ For issues or questions, please open an issue on GitHub.
 
 ---
 
-Made with ❤️ for library management
+Made with ❤️ by the Libro team

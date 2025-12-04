@@ -66,14 +66,14 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
     { 
       step: 2, 
       title: 'Initial Setup', 
-      description: 'Configure your library settings and preferences',
+      description: 'Configure your settings and preferences',
       time: '5 min',
       icon: '⚙️'
     },
     { 
       step: 3, 
       title: 'Add Members', 
-      description: 'Import or add your first library members',
+      description: 'Import or add your first members',
       time: '10 min',
       icon: '👥'
     },
@@ -91,7 +91,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
       name: 'Sarah Johnson',
       role: 'Library Director',
       organization: 'City Public Library',
-      content: 'LibraryOS has transformed how we manage our daily operations. The automation features save us hours every day.',
+      content: 'Libro has transformed how we manage our daily operations. The automation features save us hours every day.',
       rating: 5
     },
     {
@@ -129,14 +129,14 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
             <h1 className="hero-title">
               The Complete
               <br />
-              <span className="gradient-text">Library Management</span>
+              <span className="gradient-text">Libro</span>
               <br />
               Platform
             </h1>
             <p className="hero-description">
-              Streamline your library operations with our comprehensive digital solution. 
+              Streamline your operations with our comprehensive digital solution. 
               From member management to advanced analytics, everything you need to run 
-              a modern library efficiently.
+              a modern space efficiently.
             </p>
             <div className="hero-actions">
               <button 
@@ -180,7 +180,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
           <div className="section-header">
             <h2 className="section-title">Everything You Need</h2>
             <p className="section-description">
-              Powerful features designed specifically for modern library management
+              Powerful features designed specifically for Libro
             </p>
           </div>
           
@@ -206,7 +206,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
           <div className="section-header">
             <h2 className="section-title">Trusted by Libraries Worldwide</h2>
             <p className="section-description">
-              See what library professionals are saying about LibraryOS
+              See what professionals are saying about Libro
             </p>
           </div>
           
@@ -239,7 +239,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
           <div className="section-header">
             <h2 className="section-title">Complete Feature Breakdown</h2>
             <p className="section-description">
-              Explore the comprehensive set of tools designed to modernize your library operations
+              Explore the comprehensive set of tools designed to modernize your operations
             </p>
           </div>
         </div>
@@ -352,7 +352,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
                 <div className="feature-item-icon">📈</div>
                 <div>
                   <h4>Advanced Analytics</h4>
-                  <p>Detailed insights into member behavior and library usage</p>
+                  <p>Detailed insights into member behavior and space usage</p>
                 </div>
               </div>
               <div className="feature-item">
@@ -385,7 +385,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
                 <div className="feature-item-icon">🎨</div>
                 <div>
                   <h4>Custom Settings</h4>
-                  <p>Tailor the system to match your library's workflow</p>
+                  <p>Tailor the system to match your workflow</p>
                 </div>
               </div>
               <div className="feature-item">
@@ -434,7 +434,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
           <div className="section-header">
             <h2 className="section-title">Get Started in Minutes</h2>
             <p className="section-description">
-              Follow our simple 4-step process to get your library management system up and running
+              Follow our simple 4-step process to get Libro up and running
             </p>
             <div className="total-time-badge">
               <span className="time-icon">⏱️</span>
@@ -474,7 +474,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
                       </div>
                       <div className="detail-item">
                         <span className="detail-icon">🏢</span>
-                        <span>Enter library information</span>
+                        <span>Enter business information</span>
                       </div>
                     </div>
                   )}
@@ -482,7 +482,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
                     <div className="detail-list">
                       <div className="detail-item">
                         <span className="detail-icon">🎨</span>
-                        <span>Customize library branding</span>
+                        <span>Customize your branding</span>
                       </div>
                       <div className="detail-item">
                         <span className="detail-icon">💰</span>
@@ -535,8 +535,8 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
         <div className="getting-started-cta">
           <div className="cta-card">
             <div className="cta-content">
-              <h3>Ready to Transform Your Library?</h3>
-              <p>Join over 500 libraries worldwide who have already modernized their operations with LibraryOS.</p>
+              <h3>Ready to Transform Your Space?</h3>
+              <p>Join over 500 institutions worldwide who have already modernized their operations with Libro.</p>
               
               <div className="cta-features">
                 <div className="cta-feature">
@@ -617,7 +617,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
             <div className="brand-logo">
               <span className="brand-icon">📚</span>
               <div className="brand-text-container">
-                <span className="brand-text">LibraryOS</span>
+                <span className="brand-text">Libro</span>
                 <span className="brand-tagline">Management Platform</span>
               </div>
             </div>
@@ -684,10 +684,10 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
             <div className="footer-brand">
               <div className="footer-logo">
                 <span className="brand-icon">📚</span>
-                <span className="brand-text">LibraryOS</span>
+                <span className="brand-text">Libro</span>
               </div>
               <p className="footer-description">
-                The complete library management platform trusted by institutions worldwide.
+                The complete platform trusted by institutions worldwide.
                 Streamline operations, enhance member experience, and drive growth.
               </p>
               <div className="footer-social">
@@ -742,7 +742,7 @@ const DocumentationLanding = ({ onNavigateToAuth }) => {
           
           <div className="footer-bottom">
             <div className="footer-bottom-content">
-              <p>&copy; 2025 LibraryOS. All rights reserved.</p>
+              <p>&copy; 2025 Libro. All rights reserved.</p>
               <div className="footer-bottom-links">
                 <span>Terms of Service</span>
                 <span>Privacy Policy</span>

@@ -10,7 +10,7 @@ const Settings = () => {
   const [settings, setSettings] = useState({
     // General Settings - Enhanced with Study Room Information
     general: {
-      libraryName: 'Library Management System',
+      libraryName: 'Libro',
       address: '',
       phone: '',
       email: '',
@@ -488,7 +488,7 @@ const Settings = () => {
       // Save total_seats as a standalone setting in database
       const settingsToSave = {
         total_seats: totalSeatsNum,
-        library_name: settings.general.libraryName || 'Library Management System',
+        library_name: settings.general.libraryName || 'Libro',
         library_address: settings.general.address || '',
         library_phone: settings.general.phone || '',
         library_email: settings.general.email || ''
@@ -731,7 +731,7 @@ const Settings = () => {
     if (confirm('Are you sure you want to reset all settings to default values?')) {
       setSettings({
         general: {
-          libraryName: 'Library Management System',
+          libraryName: 'Libro',
           address: '',
           phone: '',
           email: '',

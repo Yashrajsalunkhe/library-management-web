@@ -178,7 +178,7 @@ Default settings include:
 ## Security (RLS Policies)
 
 - **Public**: Can view profiles
-- **Authenticated**: Full access to all library management tables
+- **Authenticated**: Full access to all Libro tables
 - **User-specific**: Users can update their own profile only
 
 ## Next Steps

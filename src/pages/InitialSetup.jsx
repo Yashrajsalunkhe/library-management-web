@@ -180,8 +180,8 @@ export default function InitialSetup() {
         <div className="bg-white rounded-lg shadow-xl overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-            <h1 className="text-3xl font-bold text-white">Welcome to Reading Room Management</h1>
-            <p className="mt-2 text-blue-100">Let's set up your library - This is a one-time setup</p>
+            <h1 className="text-3xl font-bold text-white">Welcome to Libro</h1>
+            <p className="mt-2 text-blue-100">Let's set up your space - This is a one-time setup</p>
           </div>
 
           {/* Form */}

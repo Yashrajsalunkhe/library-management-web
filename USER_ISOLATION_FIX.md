@@ -1,4 +1,4 @@
-# User Isolation Fix for Library Management System
+# User Isolation Fix for Libro
 
 ## Problem Description
 

@@ -1,5 +1,5 @@
 -- ===============================================================
--- OPTIMIZED LIBRARY MANAGEMENT SYSTEM SCHEMA
+-- LIBRO - OPTIMIZED SCHEMA
 -- ===============================================================
 -- This schema prevents cascading deletions and improves performance
 -- with proper indexes and constraints
