@@ -171,13 +171,13 @@ export const api = {
             
             if (error) return handleResponse(null, error);
             
-            // Fetch plan names separately if needed
+            // Fetch plan details separately if needed
             if (data && data.length > 0) {
                 const planIds = [...new Set(data.map(m => m.plan_id).filter(Boolean))];
                 if (planIds.length > 0) {
                     const { data: plans } = await supabase
                         .from('membership_plans')
-                        .select('id, name')
+                        .select('id, name, price, duration_days')
                         .in('id', planIds);
                     
                     if (plans) {
@@ -185,6 +185,9 @@ export const api = {
                         data.forEach(member => {
                             if (member.plan_id && planMap[member.plan_id]) {
                                 member.membership_plans = planMap[member.plan_id];
+                                member.plan_name = planMap[member.plan_id].name;
+                                member.plan_price = planMap[member.plan_id].price;
+                                member.plan_duration_days = planMap[member.plan_id].duration_days;
                             }
                         });
                     }

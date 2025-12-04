@@ -278,6 +278,10 @@ const Settings = () => {
               console.error('Error parsing operating hours:', e);
             }
           }
+          if (dbSettings.business_logo !== undefined && dbSettings.business_logo !== null && dbSettings.business_logo !== 'null') {
+            transformedSettings.general.logo = dbSettings.business_logo;
+            setLogoPreview(dbSettings.business_logo);
+          }
           
           // Membership Settings
           if (dbSettings.deposit_amount !== undefined) {
@@ -491,7 +495,8 @@ const Settings = () => {
         library_name: settings.general.libraryName || 'Libro',
         library_address: settings.general.address || '',
         library_phone: settings.general.phone || '',
-        library_email: settings.general.email || ''
+        library_email: settings.general.email || '',
+        business_logo: settings.general.logo || null
       };
 
       if (api?.settings?.updateSettings) {

@@ -949,119 +949,153 @@ const RenewMemberModal = ({ member, plans, onSubmit, onClose }) => {
 // Member Details Modal Component
 const MemberDetailsModal = ({ member, onEdit, onClose }) => {
   return (
-    <div className="modal-overlay">
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">👤 Member Details - {member.name}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+          <div className="flex items-center gap-3">
+            <div className="member-avatar">
+              👤
+            </div>
+            <div>
+              <h3 className="modal-title">Member Details</h3>
+              <p className="text-slate-500 text-sm mt-0.5">{member.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="close-button">×</button>
         </div>
 
         <div className="modal-body">
           <div className="member-details-grid">
             {/* Personal Information Section */}
             <div className="details-section">
-              <h4 className="section-title">Personal Information</h4>
-              <div className="details-row">
-                <span className="detail-label">Member ID:</span>
-                <span className="detail-value">#{member.id}</span>
+              <div className="section-header">
+                <div className="section-icon">📋</div>
+                <h4 className="section-title">Personal Information</h4>
               </div>
-              <div className="details-row">
-                <span className="detail-label">Name:</span>
-                <span className="detail-value">{member.name}</span>
-              </div>
-              <div className="details-row">
-                <span className="detail-label">Email:</span>
-                <span className="detail-value">{member.email || 'Not provided'}</span>
-              </div>
-              <div className="details-row">
-                <span className="detail-label">Phone:</span>
-                <span className="detail-value">{member.phone || 'Not provided'}</span>
-              </div>
-              <div className="details-row">
-                <span className="detail-label">Birth Date:</span>
-                <span className="detail-value">
-                  {member.birth_date ? new Date(member.birth_date).toLocaleDateString() : 'Not provided'}
-                </span>
-              </div>
-              <div className="details-row">
-                <span className="detail-label">City:</span>
-                <span className="detail-value">{member.city || 'Not provided'}</span>
-              </div>
-              <div className="details-row">
-                <span className="detail-label">Address:</span>
-                <span className="detail-value">{member.address || 'Not provided'}</span>
-              </div>
-              {member.id_document_type && (
+              <div className="details-content">
                 <div className="details-row">
-                  <span className="detail-label">ID Document Type:</span>
-                  <span className="detail-value">{member.id_document_type}</span>
+                  <span className="detail-label">Member ID</span>
+                  <span className="detail-value"><strong>#{member.id}</strong></span>
                 </div>
-              )}
-              {member.id_number && (
                 <div className="details-row">
-                  <span className="detail-label">ID Number:</span>
-                  <span className="detail-value">{member.id_number}</span>
+                  <span className="detail-label">Name</span>
+                  <span className="detail-value">{member.name}</span>
                 </div>
-              )}
-              {member.qr_code && (
                 <div className="details-row">
-                  <span className="detail-label">QR Code:</span>
-                  <span className="detail-value">{member.qr_code}</span>
+                  <span className="detail-label">Email</span>
+                  <span className="detail-value">{member.email || <span className="text-muted">Not provided</span>}</span>
                 </div>
-              )}
+                <div className="details-row">
+                  <span className="detail-label">Phone</span>
+                  <span className="detail-value">{member.phone || <span className="text-muted">Not provided</span>}</span>
+                </div>
+                <div className="details-row">
+                  <span className="detail-label">Birth Date</span>
+                  <span className="detail-value">
+                    {member.birth_date ? new Date(member.birth_date).toLocaleDateString('en-IN', { 
+                      day: '2-digit', 
+                      month: 'short', 
+                      year: 'numeric' 
+                    }) : <span className="text-muted">Not provided</span>}
+                  </span>
+                </div>
+                <div className="details-row">
+                  <span className="detail-label">City</span>
+                  <span className="detail-value">{member.city || <span className="text-muted">Not provided</span>}</span>
+                </div>
+                <div className="details-row">
+                  <span className="detail-label">Address</span>
+                  <span className="detail-value">{member.address || <span className="text-muted">Not provided</span>}</span>
+                </div>
+                {member.id_document_type && (
+                  <div className="details-row">
+                    <span className="detail-label">ID Document Type</span>
+                    <span className="detail-value">{member.id_document_type}</span>
+                  </div>
+                )}
+                {member.id_number && (
+                  <div className="details-row">
+                    <span className="detail-label">ID Number</span>
+                    <span className="detail-value">{member.id_number}</span>
+                  </div>
+                )}
+                {member.qr_code && (
+                  <div className="details-row">
+                    <span className="detail-label">QR Code</span>
+                    <span className="detail-value"><code>{member.qr_code}</code></span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Membership Information Section */}
             <div className="details-section">
-              <h4 className="section-title">Membership Information</h4>
-              <div className="details-row">
-                <span className="detail-label">Seat Number:</span>
-                <span className="detail-value">
-                  <span className="badge badge-info">#{member.seat_no || 'N/A'}</span>
-                </span>
+              <div className="section-header">
+                <div className="section-icon">🎫</div>
+                <h4 className="section-title">Membership Information</h4>
               </div>
-              <div className="details-row">
-                <span className="detail-label">Plan:</span>
-                <span className="detail-value">{member.plan_name || 'No plan assigned'}</span>
-              </div>
-              <div className="details-row">
-                <span className="detail-label">Plan Price:</span>
-                <span className="detail-value">₹{member.plan_price || 0}</span>
-              </div>
-              {member.plan_id && member.join_date && member.join_date !== '1900-01-01' && (
-                <>
-                  <div className="details-row">
-                    <span className="detail-label">Join Date:</span>
-                    <span className="detail-value">{new Date(member.join_date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="details-row">
-                    <span className="detail-label">End Date:</span>
-                    <span className="detail-value">{new Date(member.end_date).toLocaleDateString()}</span>
-                  </div>
-                </>
-              )}
-              <div className="details-row">
-                <span className="detail-label">Status:</span>
-                <span className="detail-value">
-                  {(() => {
-                    if (!member.plan_id || !member.end_date || member.end_date === '1900-01-01') {
-                      return <span className="badge badge-secondary">Not Active</span>;
-                    }
-                    const isExpired = new Date(member.end_date) < new Date();
-                    if (member.status === 'suspended') {
-                      return <span className="badge badge-danger">Suspended</span>;
-                    } else if (isExpired) {
-                      return <span className="badge badge-danger">Expired</span>;
-                    } else {
-                      const daysLeft = Math.ceil((new Date(member.end_date) - new Date()) / (1000 * 60 * 60 * 24));
-                      if (daysLeft <= 10) {
-                        return <span className="badge badge-warning">Expiring Soon ({daysLeft} days left)</span>;
-                      } else {
-                        return <span className="badge badge-success">Active ({daysLeft} days left)</span>;
+              <div className="details-content">
+                <div className="details-row">
+                  <span className="detail-label">Seat Number</span>
+                  <span className="detail-value">
+                    <span className="badge badge-info">#{member.seat_no || 'N/A'}</span>
+                  </span>
+                </div>
+                <div className="details-row">
+                  <span className="detail-label">Plan</span>
+                  <span className="detail-value">{member.plan_name || <span className="text-muted">No plan assigned</span>}</span>
+                </div>
+                <div className="details-row">
+                  <span className="detail-label">Plan Price</span>
+                  <span className="detail-value"><strong>₹{member.plan_price || 0}</strong></span>
+                </div>
+                {member.plan_id && member.join_date && member.join_date !== '1900-01-01' && (
+                  <>
+                    <div className="details-row">
+                      <span className="detail-label">Join Date</span>
+                      <span className="detail-value">
+                        {new Date(member.join_date).toLocaleDateString('en-IN', { 
+                          day: '2-digit', 
+                          month: 'short', 
+                          year: 'numeric' 
+                        })}
+                      </span>
+                    </div>
+                    <div className="details-row">
+                      <span className="detail-label">End Date</span>
+                      <span className="detail-value">
+                        {new Date(member.end_date).toLocaleDateString('en-IN', { 
+                          day: '2-digit', 
+                          month: 'short', 
+                          year: 'numeric' 
+                        })}
+                      </span>
+                    </div>
+                  </>
+                )}
+                <div className="details-row">
+                  <span className="detail-label">Status</span>
+                  <span className="detail-value">
+                    {(() => {
+                      if (!member.plan_id || !member.end_date || member.end_date === '1900-01-01') {
+                        return <span className="badge badge-secondary">Not Active</span>;
                       }
-                    }
-                  })()}
-                </span>
+                      const isExpired = new Date(member.end_date) < new Date();
+                      if (member.status === 'suspended') {
+                        return <span className="badge badge-danger">Suspended</span>;
+                      } else if (isExpired) {
+                        return <span className="badge badge-danger">Expired</span>;
+                      } else {
+                        const daysLeft = Math.ceil((new Date(member.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+                        if (daysLeft <= 10) {
+                          return <span className="badge badge-warning">Active ({daysLeft} Days Left)</span>;
+                        } else {
+                          return <span className="badge badge-success">Active ({daysLeft} Days Left)</span>;
+                        }
+                      }
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1072,7 +1106,7 @@ const MemberDetailsModal = ({ member, onEdit, onClose }) => {
             Close
           </button>
           <button onClick={onEdit} className="button button-primary">
-            ✏️ Edit Member
+            <span>✏️</span> Edit Member
           </button>
         </div>
       </div>

@@ -225,6 +225,7 @@ const Payments = () => {
     const libraryPhone = librarySettings.library_phone || librarySettings.general_phone || '';
     const libraryEmail = librarySettings.library_email || librarySettings.general_email || '';
     const ownerName = librarySettings.library_owner_name || librarySettings.general_ownerName || '';
+    const businessLogo = librarySettings.business_logo || librarySettings.general_logo || null;
     
     return `
 <!DOCTYPE html>
@@ -264,6 +265,14 @@ const Payments = () => {
       margin-bottom: 15px;
       border-bottom: 2px solid #2563eb;
       padding-bottom: 10px;
+    }
+    .header .logo-container {
+      margin-bottom: 8px;
+    }
+    .header .logo-container img {
+      max-width: 120px;
+      max-height: 80px;
+      object-fit: contain;
     }
     .header h1 {
       margin: 0 0 5px 0;
@@ -393,7 +402,8 @@ const Payments = () => {
 <body>
   <div class="receipt-container">
     <div class="header">
-      <h1>📚 ${libraryName}</h1>
+      ${businessLogo ? `<div class="logo-container"><img src="${businessLogo}" alt="${libraryName} Logo" /></div>` : '<h1>📚 ${libraryName}</h1>'}
+      ${businessLogo ? `<h1>${libraryName}</h1>` : ''}
       <p>Payment Receipt</p>
       <div class="library-details">
         ${libraryAddress ? `<div>${libraryAddress}</div>` : ''}
