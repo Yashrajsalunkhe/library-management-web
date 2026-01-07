@@ -157,5 +157,3 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 For issues or questions, please open an issue on GitHub.
 
 ---
-
-Made with ❤️ by the Libro team
